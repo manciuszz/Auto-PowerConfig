@@ -102,6 +102,7 @@ class Utility extends Logger {
 	
 	launchProcess(fileEXE) {
 		static configPath := A_WorkingDir . "\" . "config.ini"
+
 		filePath := this.getProcessPath(fileEXE, "ahk_exe " . fileEXE) ; Check if the process is already launched
 			
 		if (!filePath) ; Check if we got the process path stored inside the configuration file.
@@ -119,13 +120,18 @@ class Utility extends Logger {
 			FileSelectFile, filePath, 3, %fileEXE%, Select the executable file, %fileEXE% (*.exe)
 
 		if (filePath && InStr(filePath, fileEXE)) { ; Check if valid and store it inside the configuration file for future use...
-			IniWrite, %filePath%, % configPath, FilePaths, %fileEXE% ; Should we always force update the config file? hmm..
-			return this.runFile(filePath)
+			if (FileExist(filePath)) { ; The path from configuration file could not exist at some point...
+				IniWrite, %filePath%, % configPath, FilePaths, %fileEXE% ; Should we always force update the config file? hmm..
+				return this.runFile(filePath)
+			} else {
+				IniDelete, % configPath, FilePaths , %fileEXE%
+				this.launchProcess(fileExe) ; Retry
+			}
 		}
 	}
 	
 	runFile(filePath) {
-		Run, % filePath
+		Run, % filePath			
 		return this
 	}
 	

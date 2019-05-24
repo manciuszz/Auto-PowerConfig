@@ -50,7 +50,7 @@ global runnerPrefix := "PowerManager"
 
 PowerManager1_ON() {
 	global
-	if (WinExist(ThrottleMisc.processEXE)) {
+	if (WinExist(ThrottleMisc.exeProcess)) {
 		ThrottleMisc.clearTemps()
 		ThrottleProfile.set("Game").setActiveStatus("ON")
 		ThrottleMultiplier.set(25)
@@ -59,7 +59,7 @@ PowerManager1_ON() {
 
 PowerManager1_OFF(temperatureThreshold := 60) {
 	global
-	if (WinExist(ThrottleMisc.processEXE)) {
+	if (WinExist(ThrottleMisc.exeProcess)) {
 		if (Temperatures.get() > temperatureThreshold)
 			ThrottleProfile.set("Battery").setActiveStatus("ON")
 		else
@@ -71,7 +71,7 @@ PowerManager1_OFF(temperatureThreshold := 60) {
 
 PowerManager2_ON() {
 	global
-	if (WinExist(ThrottleMisc.processEXE)) {
+	if (WinExist(ThrottleMisc.exeProcess)) {
 		ThrottleMisc.clearTemps()
 		ThrottleProfile.set("Internet").setActiveStatus("ON")
 		; ThrottleMultiplier.set(25)
@@ -80,7 +80,7 @@ PowerManager2_ON() {
 
 PowerManager2_OFF(temperatureThreshold := 60) {
 	global
-	if (WinExist(ThrottleMisc.processEXE)) {
+	if (WinExist(ThrottleMisc.exeProcess)) {
 		if (Temperatures.get() > temperatureThreshold)
 			ThrottleProfile.set("Battery").setActiveStatus("ON")
 		else
@@ -90,7 +90,7 @@ PowerManager2_OFF(temperatureThreshold := 60) {
 
 ; -----------  PSEUDO COROUTINES END HERE --------------
 
-#If WinExist(ThrottleMisc.processEXE) ; ThrottleStop context-sensitive hotkeys...
-; *PgDn:: Utility.launchProcess("RTSS.exe")
+#If WinExist(ThrottleMisc.exeProcess) ; ThrottleStop context-sensitive hotkeys...
+; *PgDn:: Temperatures.log.get()
 ; *XButton1:: FindTextInsideControlWindow("Game")
 *Insert:: Reload
