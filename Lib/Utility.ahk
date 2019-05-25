@@ -102,9 +102,12 @@ class Utility extends Logger {
 	
 	launchProcess(fileEXE) {
 		static configPath := A_WorkingDir . "\" . "config.ini"
+		processAlreadyLoaded := false
 
 		filePath := this.getProcessPath(fileEXE, "ahk_exe " . fileEXE) ; Check if the process is already launched
-			
+		if (filePath)
+			processAlreadyLoaded := true
+					
 		if (!filePath) ; Check if we got the process path stored inside the configuration file.
 			IniRead, filePath, % configPath, FilePaths, %fileEXE%, %A_Space%
 	
@@ -122,7 +125,8 @@ class Utility extends Logger {
 		if (filePath && InStr(filePath, fileEXE)) { ; Check if valid and store it inside the configuration file for future use...
 			if (FileExist(filePath)) { ; The path from configuration file could not exist at some point...
 				IniWrite, %filePath%, % configPath, FilePaths, %fileEXE% ; Should we always force update the config file? hmm..
-				return this.runFile(filePath)
+				if !(processAlreadyLoaded)
+					return this.runFile(filePath)
 			} else {
 				IniDelete, % configPath, FilePaths , %fileEXE%
 				this.launchProcess(fileExe) ; Retry
@@ -205,5 +209,22 @@ class Utility extends Logger {
 		NumPut(screenWidth, deviceMode, 108)
 		NumPut(screenHeight, deviceMode, 112)
 		return DllCall("ChangeDisplaySettingsA", UInt, &deviceMode, UInt, 0)
+	}
+	
+	AHKScript(filePath) {
+		return { open: Func(this._AHKScript_Internals.Name).Bind(this, "Open", filePath), close: Func(this._AHKScript_Internals.Name).Bind(this, "Close", filePath) } 
+	}
+	
+	_AHKScript_Internals(labelName, filePath) {
+		Goto, %labelName%
+		
+		Open:
+			this.runFile(filePath)
+		Return
+				
+		Close:
+			DetectHiddenWindows, On
+			WinClose, %filePath% ahk_class AutoHotkey
+		Return
 	}
 }

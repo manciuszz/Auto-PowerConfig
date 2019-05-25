@@ -25,7 +25,7 @@ SendMode Input
 
 StartMonitoringProcesses() {
 	static vAutoExecDummy := StartMonitoringProcesses() ; TL:DR -> This makes self-execution for functions possible
-	
+		
 	if A_IsAdmin { ; Note: Comment these and the includes above if not needed.
 		Utility.launchProcess("RTSS.exe")
 		Utility.launchProcess("ThrottleStop.exe")
@@ -36,18 +36,18 @@ StartMonitoringProcesses() {
 	(Join,
 			1: { "ahk_exe androidemulator.exe": "Active" }
 			2: { "ahk_exe opera.exe": "Active" }
+			3: { "ahk_exe client.exe": "Active" }
 	)}
 	
 	for windowID, windowInfo in monitoredProcesses {
 		for processID, windowDetectionType in windowInfo {
-			MonitorWindow(processID, windowID, windowDetectionType)
+			WatchDog.monitorWindow(processID, windowDetectionType, "PowerManager" . windowID)		
 		}
 	}
+	WatchDog.run()
 }
 
 ; -----------  PSUEDO COROUTINES START HERE --------------
-global runnerPrefix := "PowerManager"
-
 PowerManager1_ON() {
 	global
 	if (WinExist(ThrottleMisc.exeProcess)) {
@@ -88,9 +88,61 @@ PowerManager2_OFF(temperatureThreshold := 60) {
 	}
 }
 
+; ----------------------
+
+PowerManager3_ON() { ; Game "Creative Destruction" profile
+	global
+	if (WinExist(ThrottleMisc.exeProcess)) {
+		ThrottleMisc.clearTemps()
+		ThrottleProfile.set("Game").setActiveStatus("ON")
+		ThrottleMultiplier.set(25)
+	}
+	
+	if (WinExist("Creative Destruction")) { ; Because "Creative Destruction" and "Blade and Soul" has the same process name...
+		static isCalled := false
+		if (isCalled)
+			return
+			
+		notifyProcessID := RegexReplace(A_ThisFunc, "PowerManager(.*)_.*", "$1")
+
+		; Utility.changeResolution(1360, 768)
+		; Notify(notifyProcessID, "Changing Desktop Resolution to enhance Creative Destruction experience.")
+	
+
+		Utility.AHKScript("C:\Users\Manciuszz\Desktop\AHK\Project-Aim Assistance.ahk").open()
+		WatchDog.notify(notifyProcessID, "Creative Destruction Enhancer loaded.")
+		
+		Utility.AHKScript("C:\Users\Manciuszz\Desktop\AHK\PixelAimAssistance.ahk").open()
+
+		WatchDog.notify(notifyProcessID, "Creative Destruction Aim Assistance loaded.")
+		
+		Utility.setProcessCPUPriority("client", "High")
+		WatchDog.notify(notifyProcessID, "Application CPU priority has been set to 'High'.")
+		
+		isCalled := true
+	}	
+}
+
+PowerManager3_OFF(temperatureThreshold := 60) {
+	global
+	if (WinExist(ThrottleMisc.exeProcess)) {
+		if (Temperatures.get() > temperatureThreshold) ; To allow faster cooling down after done playing games...
+			ThrottleProfile.set("Battery").setActiveStatus("ON")
+		else
+			ThrottleProfile.set("Internet").setActiveStatus("OFF")
+	}
+	
+	if !(WinExist("Creative Destruction")) {
+		notifyProcessID := RegexReplace(A_ThisFunc, "PowerManager(.*)_.*", "$1")
+
+		Utility.AHKScript("C:\Users\Manciuszz\Desktop\AHK\Project-Aim Assistance.ahk").close()
+		Utility.AHKScript("C:\Users\Manciuszz\Desktop\AHK\PixelAimAssistance.ahk").close()
+		WatchDog.notify(notifyProcessID, "Closed Creative Destruction Enhancer")
+	}
+}
+
 ; -----------  PSEUDO COROUTINES END HERE --------------
 
 #If WinExist(ThrottleMisc.exeProcess) ; ThrottleStop context-sensitive hotkeys...
-; *PgDn:: Temperatures.log.get()
-; *XButton1:: FindTextInsideControlWindow("Game")
 *Insert:: Reload
+; *PgDn:: return
