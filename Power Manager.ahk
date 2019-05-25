@@ -90,24 +90,45 @@ PowerManager2_OFF(temperatureThreshold := 60) {
 
 ; ----------------------
 
+_ThrottlePerformance(multiplier := "") { ; On the fly "CoolDown" hotkey function
+	static toggleThrottleMode := false
+	if (WinExist(ThrottleMisc.exeProcess)) {
+		; ThrottleMultiplier.set(toggleThrottleMode ? 24 : multiplier)
+		RTSS.replaceFPS("client.exe", toggleThrottleMode ? 59935 : 30000).applyChanges()
+		toggleThrottleMode := !toggleThrottleMode
+	}
+}
+
+BindHotkey(hk, fun, arg*) { ; TODO: Add Unbind dynamic hotkeys function?
+    static funs := {}, args := {}
+    funs[hk] := Func(fun), args[hk] := arg
+    Hotkey, %hk%, Hotkey_Handle
+    return
+	
+	Hotkey_Handle:
+		funs[A_ThisHotkey].(args[A_ThisHotkey]*)
+    return
+}
+
 PowerManager3_ON() { ; Game "Creative Destruction" profile
 	global
 	if (WinExist(ThrottleMisc.exeProcess)) {
 		ThrottleMisc.clearTemps()
 		ThrottleProfile.set("Game").setActiveStatus("ON")
-		ThrottleMultiplier.set(25)
+		ThrottleMultiplier.set(24)
 	}
 	
 	if (WinExist("Creative Destruction")) { ; Because "Creative Destruction" and "Blade and Soul" has the same process name...
 		static isCalled := false
 		if (isCalled)
 			return
-			
-		notifyProcessID := RegexReplace(A_ThisFunc, "PowerManager(.*)_.*", "$1")
+					
+		BindHotkey("*XButton2", "_ThrottlePerformance", 8)
+
+		notifyProcessID := "client.exe"
 
 		; Utility.changeResolution(1360, 768)
 		; Notify(notifyProcessID, "Changing Desktop Resolution to enhance Creative Destruction experience.")
-	
 
 		Utility.AHKScript("C:\Users\Manciuszz\Desktop\AHK\Project-Aim Assistance.ahk").open()
 		WatchDog.notify(notifyProcessID, "Creative Destruction Enhancer loaded.")
@@ -133,11 +154,10 @@ PowerManager3_OFF(temperatureThreshold := 60) {
 	}
 	
 	if !(WinExist("Creative Destruction")) {
-		notifyProcessID := RegexReplace(A_ThisFunc, "PowerManager(.*)_.*", "$1")
-
 		Utility.AHKScript("C:\Users\Manciuszz\Desktop\AHK\Project-Aim Assistance.ahk").close()
 		Utility.AHKScript("C:\Users\Manciuszz\Desktop\AHK\PixelAimAssistance.ahk").close()
-		WatchDog.notify(notifyProcessID, "Closed Creative Destruction Enhancer")
+		WatchDog.notify("client.exe", "Closed Creative Destruction Enhancer")
+		RTSS.toggleDisplay(true)
 	}
 }
 

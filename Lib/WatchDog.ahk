@@ -10,7 +10,7 @@
 	}
 	
 	notify(wnd, msg, delay = 2000) {
-		wndTitle := SubStr(wnd, 9)
+		wndTitle := LTrim(wnd, "ahk_exe ")
 		StringUpper, wndTitle, wndTitle
 		TrayTip, Power Manager - %wndTitle%, % msg
 		Sleep % delay

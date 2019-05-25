@@ -11,12 +11,24 @@ class RTSS {
 		IniWrite, %fpsLimit%, % this.getProfileConfig(profileEXE), Framerate, Limit
 		return this
 	}
+	
+	toggleDisplay(forceState := "") {
+		static isHidden := false
+		isHidden := (forceState != "" ? forceState : !isHidden)
+		if (isHidden) {
+			WinShow, RivaTunerStatisticsServer
+		} else {
+			WinHide, RivaTunerStatisticsServer
+		}
+		return this
+	}
 
 	applyChanges() {
-		DetectHiddenWindows, Off
-		; WinActivate, % this.exeProcess
-		ControlClick,, % this.exeProcess
-		WinMinimize, % this.exeProcess
+		if !(WinExist(this.exeProcess))
+			return
+		this.toggleDisplay(false)
+		ControlClick, , RivaTunerStatisticsServer
+		ControlClick, x325 y375, RivaTunerStatisticsServer
 		return this
 	}
 }
