@@ -99,17 +99,6 @@ _ThrottlePerformance(multiplier := "") { ; On the fly "CoolDown" hotkey function
 	}
 }
 
-BindHotkey(hk, fun, arg*) { ; TODO: Add Unbind dynamic hotkeys function?
-    static funs := {}, args := {}
-    funs[hk] := Func(fun), args[hk] := arg
-    Hotkey, %hk%, Hotkey_Handle
-    return
-	
-	Hotkey_Handle:
-		funs[A_ThisHotkey].(args[A_ThisHotkey]*)
-    return
-}
-
 PowerManager3_ON() { ; Game "Creative Destruction" profile
 	global
 	if (WinExist(ThrottleMisc.exeProcess)) {
@@ -123,7 +112,7 @@ PowerManager3_ON() { ; Game "Creative Destruction" profile
 		if (isCalled)
 			return
 					
-		BindHotkey("*XButton2", "_ThrottlePerformance", 8)
+		DynamicKey.bind("*XButton2", "_ThrottlePerformance", 8)
 
 		notifyProcessID := "client.exe"
 

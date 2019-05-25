@@ -91,6 +91,23 @@ class Logger {
 		}
 	}
 }
+
+class DynamicKey {	
+	bind(hk, fun, arg*) { ; TODO: Add Unbind dynamic hotkeys function?
+		static funs := {}, args := {}
+		funs[hk] := Func(fun), args[hk] := arg
+		Hotkey, %hk%, Hotkey_Handle, On
+		return
+		
+		Hotkey_Handle:
+			funs[A_ThisHotkey].(args[A_ThisHotkey]*)
+		return
+	}
+
+	unbind(hk := "") {
+		Hotkey, % (!hk ? A_ThisHotkey : hk), Off
+	}
+}
 	
 class Utility extends Logger {
 	runSelfAsAdministrator() {
