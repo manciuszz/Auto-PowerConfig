@@ -93,7 +93,7 @@ class Logger {
 }
 
 class DynamicKey {	
-	bind(hk, fun, arg*) { ; TODO: Add Unbind dynamic hotkeys function?
+	bind(hk, fun, arg*) {
 		static funs := {}, args := {}
 		funs[hk] := Func(fun), args[hk] := arg
 		Hotkey, %hk%, Hotkey_Handle, On
@@ -104,7 +104,7 @@ class DynamicKey {
 		return
 	}
 
-	unbind(hk := "") {
+	unbind(hk := "") { ; TODO?: Good practice would be to clear 'funs' array too, but I guess its not that relevant..
 		Hotkey, % (!hk ? A_ThisHotkey : hk), Off
 	}
 }
@@ -229,6 +229,10 @@ class Utility extends Logger {
 	}
 	
 	AHKScript(filePath) {
+		if !(FileExist(filePath)) {
+			MsgBox, File "%filePath%" not found!
+			return
+		}
 		return { open: Func(this._AHKScript_Internals.Name).Bind(this, "Open", filePath), close: Func(this._AHKScript_Internals.Name).Bind(this, "Close", filePath) } 
 	}
 	

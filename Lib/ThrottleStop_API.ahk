@@ -52,7 +52,7 @@ class ThrottleMisc {
 		return this
 	}
 	
-	clearTemps() {
+	clearTempLogs() {
 		ControlClick, % this.CLR.buttonId, % ThrottleMisc.exeProcess
 		return this
 	}
