@@ -27,7 +27,7 @@ SendMode Input
 StartMonitoringProcesses() {
 	static vAutoExecDummy := StartMonitoringProcesses() ; TL:DR -> This makes self-execution for functions possible
 	
-	if (true && A_IsAdmin) { ; Note: Comment these and the includes above if not needed.
+	if (false && A_IsAdmin) { ; Note: Comment these and the includes above if not needed.
 		Utility.launchProcess("RTSS.exe")
 		Utility.launchProcess("ThrottleStop.exe")
 		Utility.launchProcess("SilentOption.exe")
@@ -91,16 +91,38 @@ PowerManager2_OFF(temperatureThreshold := 60) {
 
 ; ----------------------
 
+_updateOverlay(profileEXE := "", clearText := false) {
+	if (clearText)
+		return DrawText(,-1) ; Clear all messages...
+		
+	DrawText("Current Profile: " . (ThrottleProfile.getActiveStatus() == "ON" ? ThrottleProfile.getActiveProfile() : "Disabled"), 1)
+	DrawText("Current CPU-Multiplier: " . ThrottleMultiplier.get(), 2)
+	DrawText("Current Temp's: " . Temperatures.get() . "°C", 3)
+	if (profileEXE)
+		DrawText("Current FPS Limit: " . Format("{1:0.3f}", RTSS.getFPS(profileEXE) / 1000), 4)
+		
+	static temperatureRefresher := false
+	if (temperatureRefresher)
+		return
+	
+	SetTimer, DrawTemps, 1000
+	temperatureRefresher := true
+	return
+	
+	DrawTemps:
+		DrawText("Current Temp's: " . Temperatures.get() . "°C", 3)
+	return	
+}
+
+
 _ThrottlePerformance(multiplier := "") { ; On the fly "CoolDown" hotkey function
 	static toggleThrottleMode := false
 	if (WinExist(ThrottleMisc.exeProcess)) {
 		currentProfile := toggleThrottleMode ? "Game" : "Battery"
 		ThrottleProfile.set(currentProfile).setActiveStatus("ON")
-		DrawText("Current Profile: " . currentProfile, 1)
-		DrawText("Current CPU-Multiplier: " . ThrottleMultiplier.get(), 2)
-		DrawText("Current Temp's: " . Temperatures.get(), 3)
 		; RTSS.replaceFPS("client.exe", toggleThrottleMode ? 59935 : 30000).applyChanges()
 		toggleThrottleMode := !toggleThrottleMode
+		_updateOverlay()
 	}
 }
 
@@ -110,9 +132,7 @@ PowerManager3_ON(cpuMultiplier := 19) { ; Game "Creative Destruction" profile
 		ThrottleMisc.clearTempLogs()
 		ThrottleProfile.set("Game").setActiveStatus("ON")
 		ThrottleMultiplier.set(cpuMultiplier)
-		DrawText("Current Profile: Game", 1)
-		DrawText("Current CPU-Multiplier: " . cpuMultiplier, 2)
-		DrawText("Current Temp's: " . Temperatures.get(), 3)
+		_updateOverlay()
 	}
 	
 	if (WinExist("Creative Destruction")) { ; Because "Creative Destruction" and "Blade and Soul" has the same process name...
@@ -146,14 +166,10 @@ PowerManager3_OFF(temperatureThreshold := 60) {
 	if (WinExist(ThrottleMisc.exeProcess)) {
 		if (Temperatures.get() > temperatureThreshold) { ; To allow faster cooling down after done playing games...
 			ThrottleProfile.set("Battery").setActiveStatus("ON")
-			DrawText("Current Profile: Battery", 1)
-			DrawText("Current Temp's: " . Temperatures.get(), 2)
-			DrawText("", 3)
 		} else {
 			ThrottleProfile.set("Internet").setActiveStatus("OFF")
-			DrawText("Current Profile: Disabled", 1)
-			DrawText("", 2)
 		}
+		_updateOverlay()
 	}
 	
 	if !(WinExist("Creative Destruction")) {
@@ -162,13 +178,14 @@ PowerManager3_OFF(temperatureThreshold := 60) {
 		WatchDog.notify("client.exe", "Closed Creative Destruction Enhancer")
 		DynamicKey.unbind("*XButton2")
 		RTSS.toggleDisplay(true)
+		_updateOverlay(, true)
 	}
 }
 
 ; -----------  PSEUDO COROUTINES END HERE --------------
 
-+^WheelUp:: ThrottleMultiplier.increase()
-+^WheelDown:: ThrottleMultiplier.decrease()
++^WheelUp:: ThrottleMultiplier.increase(), _updateOverlay()
++^WheelDown:: ThrottleMultiplier.decrease(), _updateOverlay()
 
 #If WinExist(ThrottleMisc.exeProcess) ; ThrottleStop context-sensitive hotkeys...
 *Insert:: Reload

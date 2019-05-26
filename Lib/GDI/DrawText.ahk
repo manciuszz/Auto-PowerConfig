@@ -49,6 +49,8 @@ DrawText(str := "", drawTo := 1, offsetX := 50, offsetY := 100, style := "Bold",
 			drawLine = 1
 		} else if (!str && drawTo > 0) {
 			messageQueue.Delete(drawTo)
+		} else if (drawTo < 0) {
+			messageQueue := {}
 		}		
 		messageQueue[drawTo != "" ? drawTo : drawLine] := str
 		drawnString := Join("`n", messageQueue)

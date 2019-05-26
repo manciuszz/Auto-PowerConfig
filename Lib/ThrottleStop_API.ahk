@@ -157,16 +157,17 @@ class ThrottleProfile extends Logger {
 	}
 	
 	getActiveStatus() {
+		static statusRemap := { "ON": "OFF", "OFF": "ON" }
 		ControlGetText, currentStatus, % this.activateProfileToggle.buttonId, % ThrottleMisc.exeProcess
 		trimmedStatus := StrReplace(currentStatus, "Turn ", "")
 		StringUpper, upperCaseStatus, trimmedStatus
-		return this._debugWrapper(upperCaseStatus)
+		return this._debugWrapper(statusRemap[upperCaseStatus])
 	}
 	
 	setActiveStatus(forceStatus := "") {
 		if (forceStatus != "") {
 			currentStatus := this.getActiveStatus()
-			if (forceStatus != currentStatus)
+			if (forceStatus == currentStatus)
 				return this
 		}
 			
