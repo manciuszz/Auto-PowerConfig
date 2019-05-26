@@ -25,9 +25,9 @@ SetControlDelay, -1
 SendMode Input
 
 StartMonitoringProcesses() {
-	static vAutoExecDummy := StartMonitoringProcesses() ; TL:DR -> This makes self-execution for functions possible
+	static vAutoExecDummy := StartMonitoringProcesses() ; TL:DR -> This makes self-execution for functions possible, but it has a few problems...
 	
-	if (false && A_IsAdmin) { ; Note: Comment these and the includes above if not needed.
+	if (true && A_IsAdmin) { ; Note: Comment these and the includes above if not needed.
 		Utility.launchProcess("RTSS.exe")
 		Utility.launchProcess("ThrottleStop.exe")
 		Utility.launchProcess("SilentOption.exe")
@@ -35,9 +35,9 @@ StartMonitoringProcesses() {
 		
 	monitoredProcesses := {
 	(Join,
-			1: { "ahk_exe androidemulator.exe": "Active" }
-			2: { "ahk_exe opera.exe": "Active" }
-			3: { "ahk_exe client.exe": "Active" }
+		1: { "ahk_exe androidemulator.exe": "Active" }
+		2: { "ahk_exe opera.exe": "Active" }
+		3: { "ahk_exe client.exe": "Active" }
 	)}
 	
 	for windowID, windowInfo in monitoredProcesses {
@@ -49,51 +49,15 @@ StartMonitoringProcesses() {
 }
 
 ; -----------  PSUEDO COROUTINES START HERE --------------
-PowerManager1_ON() {
-	global
-	if (WinExist(ThrottleMisc.exeProcess)) {
-		ThrottleMisc.clearTempLogs()
-		ThrottleProfile.set("Game").setActiveStatus("ON")
-		ThrottleMultiplier.set(25)
-	}
-}
-
-PowerManager1_OFF(temperatureThreshold := 60) {
-	global
-	if (WinExist(ThrottleMisc.exeProcess)) {
-		if (Temperatures.get() > temperatureThreshold)
-			ThrottleProfile.set("Battery").setActiveStatus("ON")
-		else
-			ThrottleProfile.set("Internet").setActiveStatus("OFF")
-	}
-}
-
-; ----------------------
-
-PowerManager2_ON() {
-	global
-	if (WinExist(ThrottleMisc.exeProcess)) {
-		ThrottleMisc.clearTempLogs()
-		ThrottleProfile.set("Internet").setActiveStatus("ON")
-		; ThrottleMultiplier.set(25)
-	}
-}
-
-PowerManager2_OFF(temperatureThreshold := 60) {
-	global
-	if (WinExist(ThrottleMisc.exeProcess)) {
-		if (Temperatures.get() > temperatureThreshold)
-			ThrottleProfile.set("Battery").setActiveStatus("ON")
-		else
-			ThrottleProfile.set("Internet").setActiveStatus("OFF")
-	}
-}
-
-; ----------------------
-
 _updateOverlay(profileEXE := "", clearText := false) {
-	if (clearText)
-		return DrawText(,-1) ; Clear all messages...
+	static temperatureRefresher := false
+
+	if (clearText) {
+		DrawText(,-1) ; Clear all messages...
+		SetTimer, DrawTemps, Delete
+		temperatureRefresher := false
+		return 
+	}
 		
 	DrawText("Current Profile: " . (ThrottleProfile.getActiveStatus() == "ON" ? ThrottleProfile.getActiveProfile() : "Disabled"), 1)
 	DrawText("Current CPU-Multiplier: " . ThrottleMultiplier.get(), 2)
@@ -101,7 +65,6 @@ _updateOverlay(profileEXE := "", clearText := false) {
 	if (profileEXE)
 		DrawText("Current FPS Limit: " . Format("{1:0.3f}", RTSS.getFPS(profileEXE) / 1000), 4)
 		
-	static temperatureRefresher := false
 	if (temperatureRefresher)
 		return
 	
@@ -114,19 +77,68 @@ _updateOverlay(profileEXE := "", clearText := false) {
 	return	
 }
 
-
-_ThrottlePerformance(multiplier := "") { ; On the fly "CoolDown" hotkey function
+_ThrottlePerformance(wndTitle, multiplier := "") { ; On the fly "CoolDown" hotkey function
 	static toggleThrottleMode := false
 	if (WinExist(ThrottleMisc.exeProcess)) {
 		currentProfile := toggleThrottleMode ? "Game" : "Battery"
 		ThrottleProfile.set(currentProfile).setActiveStatus("ON")
-		; RTSS.replaceFPS("client.exe", toggleThrottleMode ? 59935 : 30000).applyChanges()
+		; RTSS.replaceFPS(wndTitle, toggleThrottleMode ? 59935 : 30000).applyChanges()
 		toggleThrottleMode := !toggleThrottleMode
 		_updateOverlay()
 	}
 }
 
-PowerManager3_ON(cpuMultiplier := 19) { ; Game "Creative Destruction" profile
+; ----------------------
+
+; this = { wndTitle: String, trigger: String, isRunning: Boolean, callbackNames: String|Array }
+PowerManager1_ON(this) {
+	global
+	if (WinExist(ThrottleMisc.exeProcess)) {
+		ThrottleMisc.clearTempLogs()
+		ThrottleProfile.set("Game").setActiveStatus("ON")
+		ThrottleMultiplier.set(25)
+		_updateOverlay()
+	}
+}
+
+PowerManager1_OFF(this, temperatureThreshold := 60) {
+	global
+	if (WinExist(ThrottleMisc.exeProcess)) {
+		if (Temperatures.get() > temperatureThreshold) {
+			ThrottleProfile.set("Battery").setActiveStatus("ON")
+		} else {
+			ThrottleProfile.set("Internet").setActiveStatus("OFF")
+		}
+		_updateOverlay(, true)
+	}
+}
+
+; ----------------------
+
+PowerManager2_ON(this) {
+	global
+	if (WinExist(ThrottleMisc.exeProcess)) {
+		ThrottleMisc.clearTempLogs()
+		ThrottleProfile.set("Internet").setActiveStatus("ON")
+		; ThrottleMultiplier.set(25)
+	}
+}
+
+PowerManager2_OFF(this, temperatureThreshold := 60) {
+	global
+	if (WinExist(ThrottleMisc.exeProcess)) {
+		if (Temperatures.get() > temperatureThreshold) {
+			ThrottleProfile.set("Battery").setActiveStatus("ON")
+		} else {
+			ThrottleProfile.set("Internet").setActiveStatus("OFF")
+		}
+		_updateOverlay(, true)
+	}
+}
+
+; ----------------------
+
+PowerManager3_ON(this, cpuMultiplier := 19) { ; Game "Creative Destruction" profile
 	global
 	if (WinExist(ThrottleMisc.exeProcess)) {
 		ThrottleMisc.clearTempLogs()
@@ -139,29 +151,26 @@ PowerManager3_ON(cpuMultiplier := 19) { ; Game "Creative Destruction" profile
 		static isCalled := false
 		if (isCalled)
 			return
-								
-		DynamicKey.bind("*XButton2", "_ThrottlePerformance", cpuMultiplier)
 
-		notifyProcessID := "client.exe"
+		DynamicKey.bind("*XButton2", "_ThrottlePerformance", this.wndTitle, cpuMultiplier)
 
 		; Utility.changeResolution(1360, 768)
 		; Notify(notifyProcessID, "Changing Desktop Resolution to enhance Creative Destruction experience.")
 
 		Utility.AHKScript("C:\Users\Manciuszz\Desktop\AHK\Project-Aim Assistance.ahk").open()
-		WatchDog.notify(notifyProcessID, "Creative Destruction Enhancer loaded.")
+		WatchDog.notify(this.wndTitle, "Creative Destruction Enhancer loaded.")
 		
 		Utility.AHKScript("C:\Users\Manciuszz\Desktop\AHK\PixelAimAssistance.ahk").open()
-
-		WatchDog.notify(notifyProcessID, "Creative Destruction Aim Assistance loaded.")
+		WatchDog.notify(this.wndTitle, "Creative Destruction Aim Assistance loaded.")
 		
 		Utility.setProcessCPUPriority("client", "High")
-		WatchDog.notify(notifyProcessID, "Application CPU priority has been set to 'High'.")
+		WatchDog.notify(this.wndTitle, "Application CPU priority has been set to 'High'.")
 		
 		isCalled := true
 	}	
 }
 
-PowerManager3_OFF(temperatureThreshold := 60) {
+PowerManager3_OFF(this, temperatureThreshold := 60) {
 	global
 	if (WinExist(ThrottleMisc.exeProcess)) {
 		if (Temperatures.get() > temperatureThreshold) { ; To allow faster cooling down after done playing games...
@@ -175,7 +184,7 @@ PowerManager3_OFF(temperatureThreshold := 60) {
 	if !(WinExist("Creative Destruction")) {
 		Utility.AHKScript("C:\Users\Manciuszz\Desktop\AHK\Project-Aim Assistance.ahk").close()
 		Utility.AHKScript("C:\Users\Manciuszz\Desktop\AHK\PixelAimAssistance.ahk").close()
-		WatchDog.notify("client.exe", "Closed Creative Destruction Enhancer")
+		WatchDog.notify(this.wndTitle, "Closed Creative Destruction Enhancer")
 		DynamicKey.unbind("*XButton2")
 		RTSS.toggleDisplay(true)
 		_updateOverlay(, true)
@@ -187,6 +196,6 @@ PowerManager3_OFF(temperatureThreshold := 60) {
 +^WheelUp:: ThrottleMultiplier.increase(), _updateOverlay()
 +^WheelDown:: ThrottleMultiplier.decrease(), _updateOverlay()
 
-#If WinExist(ThrottleMisc.exeProcess) ; ThrottleStop context-sensitive hotkeys...
-*Insert:: Reload
+; #If WinExist(ThrottleMisc.exeProcess) ; ThrottleStop context-sensitive hotkeys...
+; *Insert:: Reload
 ; *PgDn:: return

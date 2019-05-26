@@ -25,9 +25,9 @@
 		return this
 	}
 	
-	_goSubSafe(mySub) {
+	_goSubSafe(mySub, processInfo) {
 		if IsFunc(mySub) {
-			%mySub%()
+			%mySub%(processInfo)
 		}
 	}
 	
@@ -40,7 +40,7 @@
 					MsgBox % "Process '" monitoredProcess.wndTitle "' doesn't have a callbackName"
 					continue
 				}		
-				this._goSubSafe( !!monitoredProcess.callbackNames.MaxIndex() ? ( (monitoredProcess.isRunning := !monitoredProcess.isRunning) ? monitoredProcess.callbackNames.1 : monitoredProcess.callbackNames.2 ) : (monitoredProcess.callbackNames "_O" ( (monitoredProcess.isRunning := !monitoredProcess.isRunning) ? "N" : "FF" ))  )
+				this._goSubSafe( !!monitoredProcess.callbackNames.MaxIndex() ? ( (monitoredProcess.isRunning := !monitoredProcess.isRunning) ? monitoredProcess.callbackNames.1 : monitoredProcess.callbackNames.2 ) : (monitoredProcess.callbackNames "_O" ( (monitoredProcess.isRunning := !monitoredProcess.isRunning) ? "N" : "FF" )), monitoredProcess )
 			}
 		}
 	}
