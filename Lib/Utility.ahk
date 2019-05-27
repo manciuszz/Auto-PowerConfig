@@ -248,4 +248,10 @@ class Utility extends Logger {
 			WinClose, %filePath% ahk_class AutoHotkey
 		Return
 	}
+	
+	Join(sep, params) {
+		for index, param in params
+			str .= sep . param
+		return SubStr(str, StrLen(sep)+1)
+	}
 }

@@ -4,7 +4,7 @@
 #Include <ThrottleStop_API>
 #Include <SilentOption_API>
 #Include <RivaTunerStatisticsServer_API>
-#Include <GDI/DrawText>
+#Include <Gdip2>
 
 #NoEnv
 #UseHook
@@ -13,7 +13,7 @@
 #HotkeyInterval 99000000
 #KeyHistory 0
 #Persistent
-#SingleInstance force
+#SingleInstance Force
 ListLines Off
 ; Process, Priority, , H ; Set process priority to High -> if unstable, comment or remove this line
 SetBatchLines, -1
@@ -49,33 +49,83 @@ StartMonitoringProcesses() {
 }
 
 ; -----------  PSUEDO COROUTINES START HERE --------------
-_updateOverlay(profileEXE := "", clearText := false) {
-	static temperatureRefresher := false
 
+_updateOverlay(clearText := false, profileEXE := "") {
+	static vOverlayDummy := false
+	static notifications := []
+
+	if (!vOverlayDummy) {
+		static overlayWindow := new gDip.Window({ "width": 235, "height": 75 })
+		overlayWindow.styleSheetInsert(new gDip.StyleSheet(
+		(Join
+			"#main", {
+				"text-align": "right",
+				"vertical-align": "top",
+				"border-color": "rgb(0, 0, 255)",
+				"border-width": "2px"
+			},
+			".square-body", {
+				"width": "225px", 
+				"height": "75px", 
+				"background-color": "rgba(0, 0, 0, 0.8)",
+				"color": "rgba(255, 0, 0, 1)",
+				"font-size": "16px"
+			}
+		)))
+		overlayWindow.shapeInsert("#main.square-body")
+		
+		SetTimer, RefreshTemperatures, 1000
+		vOverlayDummy := true
+	}
+	
 	if (clearText) {
-		DrawText(,-1) ; Clear all messages...
-		SetTimer, DrawTemps, Delete
-		temperatureRefresher := false
-		return 
+		SetTimer, RefreshTemperatures, Delete
+		return overlayWindow.Clear()
 	}
 		
-	DrawText("Current Profile: " . (ThrottleProfile.getActiveStatus() == "ON" ? ThrottleProfile.getActiveProfile() : "Disabled"), 1)
-	DrawText("Current CPU-Multiplier: " . ThrottleMultiplier.get(), 2)
-	DrawText("Current Temp's: " . Temperatures.get() . "°C", 3)
-	if (profileEXE)
-		DrawText("Current FPS Limit: " . Format("{1:0.3f}", RTSS.getFPS(profileEXE) / 1000), 4)
+	notifications := []
+	notifications.push("Current Profile: " . (ThrottleProfile.getActiveStatus() == "ON" ? ThrottleProfile.getActiveProfile() : "Disabled"))
+	notifications.push("Current CPU-Multiplier: " . ThrottleMultiplier.get())
+	notifications.push("Current Temp's: " . Temperatures.get() . "°C")
 		
-	if (temperatureRefresher)
-		return
-	
-	SetTimer, DrawTemps, 1000
-	temperatureRefresher := true
-	return
-	
-	DrawTemps:
-		DrawText("Current Temp's: " . Temperatures.get() . "°C", 3)
+	overlayWindow.shapeMatch("#main").text(Utility.Join("`n", notifications))
+	overlayWindow.Update({ x: (A_ScreenWidth - overlayWindow.width), y: 100 })
+	return overlayWindow
+		
+	RefreshTemperatures:
+		notifications[3] := "Current Temp's: " . Temperatures.get() . "°C"
+		overlayWindow.shapeMatch("#main").text(Utility.Join("`n", notifications))
+		overlayWindow.Update()
 	return	
 }
+
+; _updateOverlay(clearText := false, profileEXE := "") {
+	; static temperatureRefresher := false
+
+	; if (clearText) {
+		; DrawText(,-1) ; Clear all messages...
+		; SetTimer, DrawTemps, Delete
+		; temperatureRefresher := false
+		; return 
+	; }
+		
+	; DrawText("Current Profile: " . (ThrottleProfile.getActiveStatus() == "ON" ? ThrottleProfile.getActiveProfile() : "Disabled"), 1)
+	; DrawText("Current CPU-Multiplier: " . ThrottleMultiplier.get(), 2)
+	; DrawText("Current Temp's: " . Temperatures.get() . "°C", 3)
+	; if (profileEXE)
+		; DrawText("Current FPS Limit: " . Format("{1:0.3f}", RTSS.getFPS(profileEXE) / 1000), 4)
+		
+	; if (temperatureRefresher)
+		; return
+	
+	; SetTimer, DrawTemps, 1000
+	; temperatureRefresher := true
+	; return
+	
+	; DrawTemps:
+		; DrawText("Current Temp's: " . Temperatures.get() . "°C", 3)
+	; return	
+; }
 
 _ThrottlePerformance(wndTitle, multiplier := "") { ; On the fly "CoolDown" hotkey function
 	static toggleThrottleMode := false
@@ -109,7 +159,7 @@ PowerManager1_OFF(this, temperatureThreshold := 60) {
 		} else {
 			ThrottleProfile.set("Internet").setActiveStatus("OFF")
 		}
-		_updateOverlay(, true)
+		_updateOverlay(true)
 	}
 }
 
@@ -132,7 +182,7 @@ PowerManager2_OFF(this, temperatureThreshold := 60) {
 		} else {
 			ThrottleProfile.set("Internet").setActiveStatus("OFF")
 		}
-		_updateOverlay(, true)
+		_updateOverlay(true)
 	}
 }
 
@@ -140,6 +190,8 @@ PowerManager2_OFF(this, temperatureThreshold := 60) {
 
 PowerManager3_ON(this, cpuMultiplier := 19) { ; Game "Creative Destruction" profile
 	global
+	
+	DetectHiddenWindows, Off
 	if (WinExist(ThrottleMisc.exeProcess)) {
 		ThrottleMisc.clearTempLogs()
 		ThrottleProfile.set("Game").setActiveStatus("ON")
@@ -172,6 +224,8 @@ PowerManager3_ON(this, cpuMultiplier := 19) { ; Game "Creative Destruction" prof
 
 PowerManager3_OFF(this, temperatureThreshold := 60) {
 	global
+
+	DetectHiddenWindows, Off
 	if (WinExist(ThrottleMisc.exeProcess)) {
 		if (Temperatures.get() > temperatureThreshold) { ; To allow faster cooling down after done playing games...
 			ThrottleProfile.set("Battery").setActiveStatus("ON")
@@ -187,7 +241,7 @@ PowerManager3_OFF(this, temperatureThreshold := 60) {
 		WatchDog.notify(this.wndTitle, "Closed Creative Destruction Enhancer")
 		DynamicKey.unbind("*XButton2")
 		RTSS.toggleDisplay(true)
-		_updateOverlay(, true)
+		_updateOverlay(true)
 	}
 }
 

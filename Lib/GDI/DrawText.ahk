@@ -33,10 +33,13 @@ DrawText(str := "", drawTo := 1, offsetX := 50, offsetY := 100, style := "Bold",
 	; Red = ffff0000
 	; White = ffffffff
 
-
-	; pBrush := Gdip_BrushCreateSolid(0xf0000000)
-	; Gdip_FillRectangle(G, pBrush, 100, 100, 330, 890)
-	; Gdip_DeleteBrush(pBrush)
+	static backgroundBoard := false
+	if (!backgroundBoard) {
+		pBrush := Gdip_BrushCreateSolid(0xf0000000)
+		Gdip_FillRectangle(G, pBrush, 100, 100, 330, 890)
+		Gdip_DeleteBrush(pBrush)
+		backgroundBoard := true
+	}
 	
 	; if (debugMode) {
 		; if (drawLine <= drawLineLimit) {
