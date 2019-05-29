@@ -51,8 +51,9 @@ StartMonitoringProcesses() {
 ; -----------  PSUEDO COROUTINES START HERE --------------
 
 _updateOverlay(clearText := false, profileEXE := "") {
-	static vOverlayDummy := false
 	static notifications := []
+	static mainShape := false
+	static vOverlayDummy := false
 
 	if (!vOverlayDummy) {
 		static overlayWindow := new gDip.Window({ "width": 235, "height": 75 })
@@ -74,58 +75,32 @@ _updateOverlay(clearText := false, profileEXE := "") {
 		)))
 		overlayWindow.shapeInsert("#main.square-body")
 		
-		SetTimer, RefreshTemperatures, 1000
+		mainShape := overlayWindow.shapeMatch("#main")
 		vOverlayDummy := true
 	}
 	
 	if (clearText) {
+		notifications := []
 		SetTimer, RefreshTemperatures, Delete
 		return overlayWindow.Clear()
+	} else {
+		SetTimer, RefreshTemperatures, 1000
 	}
 		
-	notifications := []
-	notifications.push("Current Profile: " . (ThrottleProfile.getActiveStatus() == "ON" ? ThrottleProfile.getActiveProfile() : "Disabled"))
-	notifications.push("Current CPU-Multiplier: " . ThrottleMultiplier.get())
-	notifications.push("Current Temp's: " . Temperatures.get() . "°C")
+	notifications[1] := ("Current Profile: " . (ThrottleProfile.getActiveStatus() == "ON" ? ThrottleProfile.getActiveProfile() : "Disabled"))
+	notifications[2] := ("Current CPU-Multiplier: " . ThrottleMultiplier.get())
+	notifications[3] := ("Current Temp's: " . Temperatures.get() . "°C")
 		
-	overlayWindow.shapeMatch("#main").text(Utility.Join("`n", notifications))
+	mainShape.text(Utility.Join("`n", notifications))
 	overlayWindow.Update({ x: (A_ScreenWidth - overlayWindow.width), y: 100 })
 	return overlayWindow
 		
 	RefreshTemperatures:
 		notifications[3] := "Current Temp's: " . Temperatures.get() . "°C"
-		overlayWindow.shapeMatch("#main").text(Utility.Join("`n", notifications))
+		mainShape.text(Utility.Join("`n", notifications))
 		overlayWindow.Update()
 	return	
 }
-
-; _updateOverlay(clearText := false, profileEXE := "") {
-	; static temperatureRefresher := false
-
-	; if (clearText) {
-		; DrawText(,-1) ; Clear all messages...
-		; SetTimer, DrawTemps, Delete
-		; temperatureRefresher := false
-		; return 
-	; }
-		
-	; DrawText("Current Profile: " . (ThrottleProfile.getActiveStatus() == "ON" ? ThrottleProfile.getActiveProfile() : "Disabled"), 1)
-	; DrawText("Current CPU-Multiplier: " . ThrottleMultiplier.get(), 2)
-	; DrawText("Current Temp's: " . Temperatures.get() . "°C", 3)
-	; if (profileEXE)
-		; DrawText("Current FPS Limit: " . Format("{1:0.3f}", RTSS.getFPS(profileEXE) / 1000), 4)
-		
-	; if (temperatureRefresher)
-		; return
-	
-	; SetTimer, DrawTemps, 1000
-	; temperatureRefresher := true
-	; return
-	
-	; DrawTemps:
-		; DrawText("Current Temp's: " . Temperatures.get() . "°C", 3)
-	; return	
-; }
 
 _ThrottlePerformance(wndTitle, multiplier := "") { ; On the fly "CoolDown" hotkey function
 	static toggleThrottleMode := false
