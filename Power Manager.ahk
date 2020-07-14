@@ -1,272 +1,28 @@
-﻿#Include <WatchDog>
-#Include <ThrottleStop_API>
-#Include <SilentOption_API>
-#Include <RivaTunerStatisticsServer_API>
-#Include <Gdip2>
+﻿; Script tested on "AutoHotkey_2.0-a115-f7c71ea8" (2020-07-14)
 
-#NoEnv
-#UseHook
-#MaxThreadsPerHotkey 2
-#MaxHotkeysPerInterval 99000000
-#HotkeyInterval 99000000
-#KeyHistory 0
 #Persistent
 #SingleInstance Force
-ListLines Off
-; Process, Priority, , H ; Set process priority to High -> if unstable, comment or remove this line
-SetBatchLines, -1
-SetKeyDelay, -1, -1
-SetMouseDelay, -1
-SetDefaultMouseSpeed, 0
-SetWinDelay, -1
-SetControlDelay, -1
-SendMode Input
 
-StartMonitoringProcesses() {
-	static vAutoExecDummy := StartMonitoringProcesses() ; TL:DR -> This makes self-execution for functions possible, but it has a few problems...
-	
-	Utility.runSelfAsAdministrator()
-	
-	if (true && A_IsAdmin) { ; Note: Comment these and the includes above if not needed.
-		Utility.launchProcess("RTSS.exe")
-		Utility.launchProcess("ThrottleStop.exe")
-		Utility.launchProcess("SilentOption.exe")
-	}		
-		
-	monitoredProcesses := {
-	(Join,
-		1: { "ahk_exe androidemulator.exe": "Active" }
-		2: { "ahk_exe opera.exe": "Active" }
-		3: { "ahk_exe client.exe": "Active" }
-		4: { "ahk_exe cuisine_royale.exe": "Active" }
-	)}
-	
-	for windowID, windowInfo in monitoredProcesses {
-		for processID, windowDetectionType in windowInfo {
-			WatchDog.monitorWindow(processID, windowDetectionType, "PowerManager" . windowID)		
-		}
+#Include <Include>
+#Include <Utility>
+#Include <WatchDog>
+
+; Automatically load PowerConfigs inside the folder
+class PowerManager {
+	static entry_point := PowerManager.new().InitialRoutine()
+
+	InitialRoutine() {
+		ObjBindMethod(this, A_Args.Length > 0 ? A_Args[1] : "Import").Call()
 	}
-	WatchDog.run()
-}
 
-; -----------  PSUEDO COROUTINES START HERE --------------
-
-_updateOverlay(clearText := "", profileEXE := "") {
-	static notifications := []
-	static mainShape := null
-	static vOverlayDummy := null
-
-	if (!vOverlayDummy && vOverlayDummy := true) {
-		static overlayWindow := new gDip.Window({ "width": 235, "height": 75 })
-		overlayWindow.styleSheetInsert(new gDip.StyleSheet(
-		(Join
-			"#main", {
-				"text-align": "right",
-				"vertical-align": "top",
-				"border-color": "rgb(0, 0, 255)",
-				"border-width": "2px"
-			},
-			".square-body", {
-				"width": "225px", 
-				"height": "75px", 
-				"background-color": "rgba(0, 0, 0, 0.8)",
-				"color": "rgba(255, 0, 0, 1)",
-				"font-size": "16px"
-			}
-		)))
-		mainShape := overlayWindow.shapeInsert("#main.square-body")
+	Import() {
+		Include(A_ScriptDir "\PowerConfigs\*.ahk", "Main")
 	}
-	
-	if (clearText == "CLEAR") {
-		notifications := []
-		SetTimer, RefreshTemperatures, Delete
-		return overlayWindow.Clear()
-	} else {
-		SetTimer, RefreshTemperatures, 1000
-	}
-		
-	notifications[1] := ("Current Profile: " . (ThrottleProfile.getActiveStatus() == "ON" ? ThrottleProfile.getActiveProfile() : "Disabled"))
-	notifications[2] := ("Current CPU-Multiplier: " . ThrottleMultiplier.get())
-	notifications[3] := ("Current Temp's: " . Temperatures.get() . "°C")
-		
-	mainShape.text(Utility.Join("`n", notifications))
-	overlayWindow.Update({ x: (A_ScreenWidth - overlayWindow.width), y: 100 })
-	return overlayWindow
-		
-	RefreshTemperatures:
-		notifications[3] := "Current Temp's: " . Temperatures.get() . "°C"
-		mainShape.text(Utility.Join("`n", notifications))
-		overlayWindow.Update()
-	return	
-}
 
-_ThrottlePerformance(wndTitle, multiplier := "") { ; On the fly "CoolDown" hotkey function
-	static toggleThrottleMode := false
-	if (WinExist(ThrottleMisc.exeProcess)) {
-		currentProfile := toggleThrottleMode ? "Game" : "Battery"
-		ThrottleProfile.set(currentProfile).setActiveStatus("ON")
-		; RTSS.replaceFPS(wndTitle, toggleThrottleMode ? 59935 : 30000).applyChanges()
-		toggleThrottleMode := !toggleThrottleMode
-		_updateOverlay()
+	Main() {
+		Utility.ElevateToAdmin()
 	}
 }
 
-; ----------------------
-
-; this = { wndTitle: String, trigger: String, isRunning: Boolean, callbackNames: String|Array }
-PowerManager1_ON(this) {
-	global
-	if (WinExist(ThrottleMisc.exeProcess)) {
-		ThrottleMisc.clearTempLogs()
-		ThrottleProfile.set("Game").setActiveStatus("ON")
-		ThrottleMultiplier.set(25)
-		_updateOverlay()
-	}
-}
-
-PowerManager1_OFF(this, temperatureThreshold := 60) {
-	global
-	if (WinExist(ThrottleMisc.exeProcess)) {
-		if (Temperatures.get() > temperatureThreshold) {
-			ThrottleProfile.set("Battery").setActiveStatus("ON")
-		} else {
-			ThrottleProfile.set("Internet").setActiveStatus("OFF")
-		}
-		_updateOverlay("CLEAR")
-	}
-}
-
-; ----------------------
-
-PowerManager2_ON(this) {
-	global
-	if (WinExist(ThrottleMisc.exeProcess)) {
-		ThrottleMisc.clearTempLogs()
-		ThrottleProfile.set("Internet").setActiveStatus("ON")
-		; ThrottleMultiplier.set(25)
-	}
-}
-
-PowerManager2_OFF(this, temperatureThreshold := 60) {
-	global
-	if (WinExist(ThrottleMisc.exeProcess)) {
-		if (Temperatures.get() > temperatureThreshold) {
-			ThrottleProfile.set("Battery").setActiveStatus("ON")
-		} else {
-			ThrottleProfile.set("Internet").setActiveStatus("OFF")
-		}
-		_updateOverlay("CLEAR")
-	}
-}
-
-; ----------------------
-
-PowerManager3_ON(this, cpuMultiplier := 19) { ; Game "Creative Destruction" profile
-	global
-	
-	DetectHiddenWindows, Off
-	if (WinExist(ThrottleMisc.exeProcess)) {
-		ThrottleMisc.clearTempLogs()
-		ThrottleProfile.set("Game").setActiveStatus("ON")
-		ThrottleMultiplier.set(cpuMultiplier)
-		_updateOverlay()
-	}
-	
-	if (WinExist("Creative Destruction")) { ; Because "Creative Destruction" and "Blade and Soul" has the same process name...
-		static isCalled := false
-		if (isCalled)
-			return
-
-		DynamicKey.bind("*XButton2", "_ThrottlePerformance", this.wndTitle, cpuMultiplier)
-
-		; Utility.changeResolution(1360, 768)
-		; Notify(notifyProcessID, "Changing Desktop Resolution to enhance Creative Destruction experience.")
-
-		Utility.AHKScript("C:\Users\Manciuszz\Desktop\AHK\Project-Aim Assistance.ahk").open()
-		WatchDog.notify(this.wndTitle, "Creative Destruction Enhancer loaded.")
-		
-		Utility.AHKScript("C:\Users\Manciuszz\Desktop\AHK\PixelAimAssistance.ahk").open()
-		WatchDog.notify(this.wndTitle, "Creative Destruction Aim Assistance loaded.")
-		
-		Utility.setProcessCPUPriority("client", "High")
-		WatchDog.notify(this.wndTitle, "Application CPU priority has been set to 'High'.")
-		
-		isCalled := true
-	}	
-}
-
-PowerManager3_OFF(this, temperatureThreshold := 60) {
-	global
-
-	DetectHiddenWindows, Off
-	if (WinExist(ThrottleMisc.exeProcess)) {
-		if (Temperatures.get() > temperatureThreshold) { ; To allow faster cooling down after done playing games...
-			ThrottleProfile.set("Battery").setActiveStatus("ON")
-		} else {
-			ThrottleProfile.set("Internet").setActiveStatus("OFF")
-		}
-		_updateOverlay()
-	}
-	
-	if !(WinExist("Creative Destruction")) {
-		Utility.AHKScript("C:\Users\Manciuszz\Desktop\AHK\Project-Aim Assistance.ahk").close()
-		Utility.AHKScript("C:\Users\Manciuszz\Desktop\AHK\PixelAimAssistance.ahk").close()
-		WatchDog.notify(this.wndTitle, "Closed Creative Destruction Enhancer")
-		DynamicKey.unbind("*XButton2")
-		RTSS.toggleDisplay("MAXIMIZE")
-		_updateOverlay("CLEAR")
-	}
-}
-
-PowerManager4_ON(this) {
-	global
-	
-	local braveBrowser := Utility.Suspender.GetProcessIDs("brave.exe")		
-	Utility.Suspender.SuspendProcesses(braveBrowser)
-	WatchDog.notify(this.wndTitle, "Brave Browser processes temporarily suspended.")
-	
-	if (Utility.WinExist(ThrottleMisc.exeProcess)) {
-		ThrottleMisc.clearTempLogs()
-		ThrottleProfile.set("Game").setActiveStatus("ON")
-		ThrottleMultiplier.set(25)
-	}	
-	
-	static isCalled := false
-	if (isCalled)
-		return
-		
-	Utility.AHKScript("D:\Interception\CuisineAssistant\CuisineAssistant.ahk").open()
-	WatchDog.notify(this.wndTitle, "Cuisine Royale Enhancer loaded.")
-	
-	isCalled := true
-}
-
-PowerManager4_OFF(this, temperatureThreshold := 60) {
-	global
-	
-	local braveBrowser := Utility.Suspender.GetProcessIDs("brave.exe")		
-	Utility.Suspender.ResumeProcesses(braveBrowser)
-	WatchDog.notify(this.wndTitle, "Brave Browser processes resumed.")
-	
-	if (Utility.WinExist(ThrottleMisc.exeProcess)) {
-		if (Temperatures.get() > temperatureThreshold) {
-			ThrottleProfile.set("Battery").setActiveStatus("ON")
-		} else {
-			ThrottleProfile.set("Internet").setActiveStatus("OFF")
-		}
-	}
-	
-	if (!Utility.WinExist("ahk_exe cuisine_royale.exe")) {
-		Utility.AHKScript("D:\Interception\CuisineAssistant\CuisineAssistant.ahk").close()
-		WatchDog.notify(this.wndTitle, "Closed Cuisine Royale Enhancer.")
-	}
-}
-
-; -----------  PSEUDO COROUTINES END HERE --------------
-
-+^WheelUp:: ThrottleMultiplier.increase(), _updateOverlay()
-+^WheelDown:: ThrottleMultiplier.decrease(), _updateOverlay()
-
-; #If WinExist(ThrottleMisc.exeProcess) ; ThrottleStop context-sensitive hotkeys...
-; *Insert:: Reload
-; *PgDn:: return
+#HotIf WinActive("ahk_exe notepad++.exe") ; For development purposes...
+^R::Reload

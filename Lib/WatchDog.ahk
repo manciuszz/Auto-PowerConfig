@@ -1,47 +1,63 @@
 ﻿class WatchDog {
-	static checkPeriod = 1000
-	static runnerPrefix := "WatchdogRun"
-	static monitoredProcesses := []
+	static notificationDelay := 2000
+	static checkPeriod := 1000
+	static tooltipPrefix := "Power Manager ->"
+
+	notificationDelay := WatchDog.notificationDelay
+	checkPeriod := WatchDog.checkPeriod
+	tooltipPrefix := WatchDog.tooltipPrefix
 	
-	run() {
-		fn := this["runner"].Bind(this)
-		SetTimer, % fn, % this.checkPeriod
+	__New(configObj) {
+		this.callbackMethods := type(configObj) == "Class" ? configObj.new() : configObj
+		this.wndTitle := ""
+		this.trigger := "Active"
+		this.isRunning := false
+	}
+	
+	Notify(msg) {
+		wndTitle := LTrim(this.wndTitle, "ahk_exe ")
+		StrUpper(wndTitle, wndTitle)
+		TrayTip(this.tooltipPrefix . " " . wndTitle, msg)
+		Sleep(this.notificationDelay)
+		TrayTip()
+		return this
+	}
+	
+	Monitor(window, trigger := "Active") {
+		this.wndTitle := "ahk_exe " . window
+		this.trigger := trigger
+		
+		if (WinExist(this.wndTitle))
+			this.Notify("Checking for: " . this.trigger)
+			
+		return this._run()
+	}
+	
+	_run() {
+		SetTimer(ObjBindMethod(this, "_runner"), this.checkPeriod)
 		return this		
 	}
 	
-	notify(wnd, msg, delay = 2000) {
-		wndTitle := LTrim(wnd, "ahk_exe ")
-		StringUpper, wndTitle, wndTitle
-		TrayTip, Power Manager - %wndTitle%, % msg
-		Sleep % delay
-		TrayTip
-		return this
-	}
-	
-	monitorWindow(window, trigger := "Active", callbackNames := "") {
-		this.monitoredProcesses.Push({ wndTitle: window, trigger: trigger, isRunning: false, callbackNames: callbackNames })	
-		if (WinExist(window))
-			this.notify(window, "Checking for: " . trigger)
-		return this
-	}
-	
-	_goSubSafe(mySub, processInfo) {
-		if IsFunc(mySub) {
-			%mySub%(processInfo)
+	_goSubSafe(mySub) {		
+		if (type(this.callbackMethods) == "Object") {
+			method := this.callbackMethods.%mySub%
+			if (method.MaxParams == 1)
+				method.Call(this)
+			else
+				method.Call()
+		} else {
+			if (type(this.callbackMethods.base) == "Prototype")
+				this.callbackMethods.GetMethod(mySub).Call(this)
 		}
 	}
 	
-	runner() {	
-		for index, monitoredProcess in this.monitoredProcesses {
-			windowDetectionType := monitoredProcess.trigger
-			if ( !monitoredProcess.isRunning != !Win%windowDetectionType%(monitoredProcess.wndTitle) ) {
-				if (!monitoredProcess.callbackNames) {
-					this.monitoredProcesses.remove(index)
-					MsgBox % "Process '" monitoredProcess.wndTitle "' doesn't have a callbackName"
-					continue
-				}		
-				this._goSubSafe( !!monitoredProcess.callbackNames.MaxIndex() ? ( (monitoredProcess.isRunning := !monitoredProcess.isRunning) ? monitoredProcess.callbackNames.1 : monitoredProcess.callbackNames.2 ) : (monitoredProcess.callbackNames "_O" ( (monitoredProcess.isRunning := !monitoredProcess.isRunning) ? "N" : "FF" )), monitoredProcess )
-			}
+	_runner() {	
+		if (A_IsSuspended)
+			return
+	
+		if (!this.isRunning != !Win%this.trigger%(this.wndTitle)) {
+			this.isRunning := !this.isRunning
+			this._goSubSafe(this.isRunning ? "On" : "Off")
 		}
 	}
 }
