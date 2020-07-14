@@ -1,6 +1,4 @@
-﻿Utility.runSelfAsAdministrator()
-
-#Include <WatchDog>
+﻿#Include <WatchDog>
 #Include <ThrottleStop_API>
 #Include <SilentOption_API>
 #Include <RivaTunerStatisticsServer_API>
@@ -27,6 +25,8 @@ SendMode Input
 StartMonitoringProcesses() {
 	static vAutoExecDummy := StartMonitoringProcesses() ; TL:DR -> This makes self-execution for functions possible, but it has a few problems...
 	
+	Utility.runSelfAsAdministrator()
+	
 	if (true && A_IsAdmin) { ; Note: Comment these and the includes above if not needed.
 		Utility.launchProcess("RTSS.exe")
 		Utility.launchProcess("ThrottleStop.exe")
@@ -38,6 +38,7 @@ StartMonitoringProcesses() {
 		1: { "ahk_exe androidemulator.exe": "Active" }
 		2: { "ahk_exe opera.exe": "Active" }
 		3: { "ahk_exe client.exe": "Active" }
+		4: { "ahk_exe cuisine_royale.exe": "Active" }
 	)}
 	
 	for windowID, windowInfo in monitoredProcesses {
@@ -50,12 +51,12 @@ StartMonitoringProcesses() {
 
 ; -----------  PSUEDO COROUTINES START HERE --------------
 
-_updateOverlay(clearText := false, profileEXE := "") {
+_updateOverlay(clearText := "", profileEXE := "") {
 	static notifications := []
-	static mainShape := false
-	static vOverlayDummy := false
+	static mainShape := null
+	static vOverlayDummy := null
 
-	if (!vOverlayDummy) {
+	if (!vOverlayDummy && vOverlayDummy := true) {
 		static overlayWindow := new gDip.Window({ "width": 235, "height": 75 })
 		overlayWindow.styleSheetInsert(new gDip.StyleSheet(
 		(Join
@@ -73,13 +74,10 @@ _updateOverlay(clearText := false, profileEXE := "") {
 				"font-size": "16px"
 			}
 		)))
-		overlayWindow.shapeInsert("#main.square-body")
-		
-		mainShape := overlayWindow.shapeMatch("#main")
-		vOverlayDummy := true
+		mainShape := overlayWindow.shapeInsert("#main.square-body")
 	}
 	
-	if (clearText) {
+	if (clearText == "CLEAR") {
 		notifications := []
 		SetTimer, RefreshTemperatures, Delete
 		return overlayWindow.Clear()
@@ -134,7 +132,7 @@ PowerManager1_OFF(this, temperatureThreshold := 60) {
 		} else {
 			ThrottleProfile.set("Internet").setActiveStatus("OFF")
 		}
-		_updateOverlay(true)
+		_updateOverlay("CLEAR")
 	}
 }
 
@@ -157,7 +155,7 @@ PowerManager2_OFF(this, temperatureThreshold := 60) {
 		} else {
 			ThrottleProfile.set("Internet").setActiveStatus("OFF")
 		}
-		_updateOverlay(true)
+		_updateOverlay("CLEAR")
 	}
 }
 
@@ -215,8 +213,52 @@ PowerManager3_OFF(this, temperatureThreshold := 60) {
 		Utility.AHKScript("C:\Users\Manciuszz\Desktop\AHK\PixelAimAssistance.ahk").close()
 		WatchDog.notify(this.wndTitle, "Closed Creative Destruction Enhancer")
 		DynamicKey.unbind("*XButton2")
-		RTSS.toggleDisplay(true)
-		_updateOverlay(true)
+		RTSS.toggleDisplay("MAXIMIZE")
+		_updateOverlay("CLEAR")
+	}
+}
+
+PowerManager4_ON(this) {
+	global
+	
+	local braveBrowser := Utility.Suspender.GetProcessIDs("brave.exe")		
+	Utility.Suspender.SuspendProcesses(braveBrowser)
+	WatchDog.notify(this.wndTitle, "Brave Browser processes temporarily suspended.")
+	
+	if (Utility.WinExist(ThrottleMisc.exeProcess)) {
+		ThrottleMisc.clearTempLogs()
+		ThrottleProfile.set("Game").setActiveStatus("ON")
+		ThrottleMultiplier.set(25)
+	}	
+	
+	static isCalled := false
+	if (isCalled)
+		return
+		
+	Utility.AHKScript("D:\Interception\CuisineAssistant\CuisineAssistant.ahk").open()
+	WatchDog.notify(this.wndTitle, "Cuisine Royale Enhancer loaded.")
+	
+	isCalled := true
+}
+
+PowerManager4_OFF(this, temperatureThreshold := 60) {
+	global
+	
+	local braveBrowser := Utility.Suspender.GetProcessIDs("brave.exe")		
+	Utility.Suspender.ResumeProcesses(braveBrowser)
+	WatchDog.notify(this.wndTitle, "Brave Browser processes resumed.")
+	
+	if (Utility.WinExist(ThrottleMisc.exeProcess)) {
+		if (Temperatures.get() > temperatureThreshold) {
+			ThrottleProfile.set("Battery").setActiveStatus("ON")
+		} else {
+			ThrottleProfile.set("Internet").setActiveStatus("OFF")
+		}
+	}
+	
+	if (!Utility.WinExist("ahk_exe cuisine_royale.exe")) {
+		Utility.AHKScript("D:\Interception\CuisineAssistant\CuisineAssistant.ahk").close()
+		WatchDog.notify(this.wndTitle, "Closed Cuisine Royale Enhancer.")
 	}
 }
 

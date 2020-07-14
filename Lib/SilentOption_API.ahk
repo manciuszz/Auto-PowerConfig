@@ -1,29 +1,92 @@
-﻿class SilentOption {
+﻿; Note: Apparently 'ControlClick' works only when user mouse is inside this application window due to the app having internal MouseInside checks...
+class SilentOption { ; NOTE: Should be ran as an administrator to function properly.
 	static exeProcess := "ahk_exe SilentOption.exe"
 
-	simpleMode() {
-		if (WinExist(this.exeProcess)) {
-			ControlFocus,, % this.exeProcess
-			; WinActivate, % this.exeProcess
-			MouseGetPos, lastX, lastY
-			MouseMove, 280, 280, 0 ; Apparently you have to have your mouse inside the window in order for the Control Click to work...
-			ControlClick,, % this.exeProcess,,,, NA x280 y280
-			MouseMove, lastX, lastY, 0
-			return ErrorLevel
+	class CPU extends SilentOption {
+		simpleMode() {
+			if (WinExist(this.exeProcess)) {
+				this.maximize() ; ... so we maximize the window, so that we wouldn't need to physically move our mouse...
+				this.click(270, 280) ; Press 'Simple Mode' button
+				return this
+			}
+			return this._error("Failed to activate simple mode!")
 		}
-		return "Failed to activate simple mode!"
+		
+		advancedMode() {
+			if (WinExist(this.exeProcess)) {
+				this.maximize()
+				this.click(660, 655) ; Press 'Advanced Mode' button
+				return this
+			}
+			return this._error("Failed to activate advanced mode!")
+		}
 	}
 	
-	advancedMode() {
+	class GPU extends SilentOption {
+		simpleMode() {
+			if (WinExist(this.exeProcess)) {
+				; TODO ...
+				return this
+			}
+			return this._error("Failed to activate simple mode!")
+		}
+		
+		advancedMode() {
+			if (WinExist(this.exeProcess)) {
+				; TODO ...
+				return this
+			}
+			return this._error("Failed to activate advanced mode!")
+		}
+	}
+	
+	applySettings() {
 		if (WinExist(this.exeProcess)) {
-			ControlFocus,, % this.exeProcess
-			; WinActivate, % this.exeProcess
-			MouseGetPos, lastX, lastY
-			MouseMove, 280, 400, 0 ; Apparently you have to have your mouse inside the window in order for the Control Click to work...
-			ControlClick,, % this.exeProcess,,,, NA x280 y400
-			MouseMove, lastX, lastY, 0
+			this.maximize()
+			this.click(1050, 480) ; Press 'Apply'
+			Sleep, 1
+			this.click(570, 355) ; Press 'OK'
 			return ErrorLevel
 		}
-		return "Failed to activate advanced mode!"
+		return this._error("Failed to apply settings!")
+	}
+	
+	_error(msg) {
+		MsgBox % "[SilentOption API] > " . msg
+		return {}
+	}
+	
+	getWindowInfo() {
+		WinGetPos, win_x, win_y, win_width, win_height, % this.exeProcess
+		return { x: win_x, y: win_y, width: win_width, height: win_height }
+	}
+	
+	_initOffset() {
+		if (this._offset)
+			return
+		this._offset := this.getWindowInfo()
+	}
+	
+	maximize() {
+		this._initOffset()
+		; WinMaximize, % this.exeProcess
+	}
+	
+	focus() {
+		this._initOffset()
+		; ControlFocus,, % this.exeProcess
+		WinActivate, % this.exeProcess
+	}
+	
+	click(x, y, speed := 0) {
+		windowData := this.getWindowInfo()
+		x := x // (this._offset.width / windowData.width)
+		y := y // (this._offset.height / windowData.height)
+		
+		MouseGetPos, lastX, lastY
+		this.focus()
+		MouseMove, % x, % y, % speed
+		ControlClick, % "x"x " y"y, % this.exeProcess,,,, NA
+		MouseMove, % lastX, % lastY, % speed
 	}
 }

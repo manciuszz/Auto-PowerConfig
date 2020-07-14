@@ -254,4 +254,72 @@ class Utility extends Logger {
 			str .= sep . param
 		return SubStr(str, StrLen(sep)+1)
 	}
+	
+	WinExist(wnd) {
+		DetectHiddenWindows, Off
+		windowExist := WinExist(wnd)
+		if (windowExist)
+			return windowExist
+			
+		DetectHiddenWindows, On
+		windowExist := WinExist(wnd)
+		
+		DetectHiddenWindows, Off
+		return windowExist
+	}
+	
+	WinActive(wnd) {
+		DetectHiddenWindows, Off
+		windowExist := WinActive(wnd)
+		if (windowExist)
+			return windowExist
+			
+		DetectHiddenWindows, On
+		windowExist := WinActive(wnd)
+		
+		DetectHiddenWindows, Off
+		return windowExist
+	}
+	
+	class Suspender {
+		SuspendProcesses(PIDs) {
+			for i, processID in PIDs
+				this.Process_Suspend(processID)
+		}
+
+		ResumeProcesses(PIDs) {
+			for i, processID in PIDs
+				this.Process_Resume(processID)
+		}
+
+		Process_Suspend(PID_or_Name) {
+			PID := (InStr(PID_or_Name, ".")) ? this.ProcExist(PID_or_Name) : PID_or_Name
+			h := DllCall("OpenProcess", "uInt", 0x1F0FFF, "Int", 0, "Int", PID)
+			if !h   
+				Return -1
+			DllCall("ntdll.dll\NtSuspendProcess", "Int", h)
+			DllCall("CloseHandle", "Int", h)
+		}
+
+		Process_Resume(PID_or_Name) {
+			PID := (InStr(PID_or_Name,".")) ? this.ProcExist(PID_or_Name) : PID_or_Name
+			h := DllCall("OpenProcess", "uInt", 0x1F0FFF, "Int", 0, "Int", PID)
+			if !h   
+				Return -1
+			DllCall("ntdll.dll\NtResumeProcess", "Int", h)
+			DllCall("CloseHandle", "Int", h)
+		}
+
+		GetProcessIDs(processName) {
+			processID_list := []
+			for process in ComObjGet("winmgmts:").ExecQuery("Select * from Win32_Process where Name = '" . processName . "'")
+			   processID_list.Push(process.ProcessId)
+			return processID_list.MaxIndex() <> "" ? processID_list : [-1]
+		}
+
+		ProcExist(PID_or_Name = "") {
+			Process, Exist, % (PID_or_Name="") ? DllCall("GetCurrentProcessID") : PID_or_Name
+			Return Errorlevel
+		}
+	}
 }
