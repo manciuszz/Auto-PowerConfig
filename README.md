@@ -48,4 +48,4 @@ The programmed actions above would trigger defined method "On()" when you launch
 - It is possible to create a GUI to make this more accessible to everyone.
 
 #### Notes: 
-> *A dirty AHK v1 version is available in a different git branch.*
+> [*A dirty AHK v1 version is available in a different git branch.*](https://github.com/manciuszz/Auto-PowerConfig/tree/master)
