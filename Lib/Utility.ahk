@@ -295,7 +295,8 @@ class Utility {
 		DetectHiddenWindows True
 		windowExist := WinExist(wnd)
 		
-		DetectHiddenWindows False
+		if (!windowExist)
+			DetectHiddenWindows False
 		return windowExist
 	}
 	
@@ -308,7 +309,8 @@ class Utility {
 		DetectHiddenWindows True
 		windowExist := WinActive(wnd)
 		
-		DetectHiddenWindows False
+		if (!windowExist)
+			DetectHiddenWindows False
 		return windowExist
 	}
 }

@@ -15,8 +15,7 @@
 	}
 	
 	Notify(msg) {
-		wndTitle := LTrim(this.wndTitle, "ahk_exe ")
-		StrUpper(wndTitle, wndTitle)
+		wndTitle := StrUpper(StrReplace(this.wndTitle, "ahk_exe "))
 		TrayTip(this.tooltipPrefix . " " . wndTitle, msg)
 		Sleep(this.notificationDelay)
 		TrayTip()
@@ -27,7 +26,7 @@
 		this.wndTitle := "ahk_exe " . window
 		this.trigger := trigger
 		
-		if (WinExist(this.wndTitle))
+		if (WatchDog.Utility.WinExist(this.wndTitle))
 			this.Notify("Checking for: " . this.trigger)
 			
 		return this._run()
@@ -55,9 +54,39 @@
 		if (A_IsSuspended)
 			return
 	
-		if (!this.isRunning != !Win%this.trigger%(this.wndTitle)) {
+		if (!this.isRunning != !WatchDog.Utility.Win%this.trigger%(this.wndTitle)) {
 			this.isRunning := !this.isRunning
 			this._goSubSafe(this.isRunning ? "On" : "Off")
+		}
+	}
+	
+	class Utility {
+		static WinExist(wnd) {
+			DetectHiddenWindows False
+			windowExist := WinExist(wnd)
+			if (windowExist)
+				return windowExist
+				
+			DetectHiddenWindows True
+			windowExist := WinExist(wnd)
+			
+			if (!windowExist)
+				DetectHiddenWindows False
+			return windowExist
+		}
+		
+		static WinActive(wnd) {
+			DetectHiddenWindows False
+			windowExist := WinActive(wnd)
+			if (windowExist)
+				return windowExist
+				
+			DetectHiddenWindows True
+			windowExist := WinActive(wnd)
+			
+			if (!windowExist)
+				DetectHiddenWindows False
+			return windowExist
 		}
 	}
 }
