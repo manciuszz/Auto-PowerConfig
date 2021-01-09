@@ -23,11 +23,11 @@
 		return this
 	}
 	
-	Monitor(window, trigger := "Active") {
+	Monitor(window, trigger := "Active", silent := false) {
 		this.wndTitle := "ahk_exe " . window
 		this.trigger := trigger
 		
-		if (WatchDog.Utility.WinExist(this.wndTitle))
+		if (!silent && WatchDog.Utility.WinExist(this.wndTitle))
 			this.Notify("Checking for: " . this.trigger)
 			
 		return this._run()

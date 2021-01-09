@@ -15,6 +15,84 @@ class DynamicKey {
 	}
 }
 
+class FocusStealPrevention {
+	static __vInstance := ""
+
+	static _MyGui := Gui.New("+LastFound")	
+
+	static debugTips := false
+
+	__New() {
+		this.previous := -1
+		this.current := WinActive("A") 
+	}
+	
+	__shellHook() {
+		DllCall("RegisterShellHookWindow", "UInt", FocusStealPrevention._MyGui.Hwnd)
+		
+		this.MsgNum := DllCall("RegisterWindowMessage", "Str", "SHELLHOOK", "UInt")
+		this.shellMessage := ObjBindMethod(this, "ShellMessage")
+		OnMessage(this.MsgNum, this.shellMessage)
+	}
+	
+	__shellUnhook() {
+		DllCall("DeregisterShellHookWindow", "UInt", FocusStealPrevention._MyGui.Hwnd)
+		OnMessage(this.MsgNum, this.shellMessage, 0)
+	}
+	
+	static Enable() {
+		if (!FocusStealPrevention.__vInstance)
+			FocusStealPrevention.__vInstance := FocusStealPrevention.new()
+
+		FocusStealPrevention.__vInstance.__shellHook()
+	}
+	
+	static Disable() {
+		FocusStealPrevention.__vInstance.__shellUnhook()
+	}
+	
+	StopStealing(id) {	
+		if (this.current > 0 && this.current != id) {
+			WinActivate("ahk_id " . this.current)
+			return true
+		} else if (this.previous > 0 && this.previous != id) {
+			WinActivate("ahk_id " . this.previous)
+			return true
+		}
+		return false
+	}
+
+	ShellMessage(wParam, lParam, msg, hwnd) {
+		if (wParam = 1) {
+			this.lastNewWindow := A_TickCount
+			if (this.StopStealing(lParam)) {
+				DllCall("FlashWindow", "UInt", lParam, "Int", 1)
+				if (FocusStealPrevention.debugTips) {
+					Title := Utility.WinGetTitle("ahk_id " . lParam)
+					this.ShowTip("Thief: " . Title . " (" . A_TimeIdlePhysical . ")", "Stopped Focus Steal")
+				}
+			}
+		} 
+		
+		if (lParam > 0 && wParam = 32772) { 
+			this.LogCurrent(lParam)
+		}
+	}
+	
+	LogCurrent(id) {
+		if (id != this.current) {
+			this.previous := this.current
+			this.current := id
+			return true
+		}
+		return false
+	}
+	
+	ShowTip(title, text := "") {
+		TrayTip(text, title, 16)
+	}
+}
+
 class Suspender {
 	static SuspendProcesses(PIDs) {
 		for i, processID in PIDs
@@ -188,9 +266,9 @@ class Utility {
 			return process.ExecutablePath
 	}
 	
-	static RunCommand(filePath, silent := true) {
+	static RunCommand(filePath, optionalArguments := "", silent := true) {
 		try {
-			Run(filePath,, silent ? "Hide" : "")
+			Run(filePath . " " . optionalArguments,, silent ? "Hide" : "")
 		} catch e {
 			if (InStr(e.Message, "Failed attempt to launch program"))
 				MsgBox("Failed attempt to launch program: " . filePath . "`n`nPro tip: Open it manually and reload script.")
@@ -211,7 +289,7 @@ class Utility {
 		}
 	}
 
-	static LaunchProcess(fileEXE, silent := true) {
+	static LaunchProcess(fileEXE, optionalParams := "", silent := true) {
 		static configPath := A_WorkingDir . "\Lib\Cache\" . "QuickAccessCache.ini"
 		processAlreadyLoaded := false
 
@@ -236,10 +314,10 @@ class Utility {
 			if (FileExist(filePath)) { ; The path from configuration file could not exist at some point...
 				IniWrite(filePath, configPath, "FilePaths", fileEXE) ; Should we always force update the config file? hmm..
 				if !(processAlreadyLoaded)
-					return this.RunCommand(filePath, silent)
+					return this.RunCommand(filePath, optionalParams, silent)
 			} else {
 				IniDelete(configPath, "FilePaths", fileEXE)
-				this.LaunchProcess(fileExe, silent) ; Retry
+				this.LaunchProcess(fileExe, optionalParams, silent) ; Retry
 			}
 		}
 	}

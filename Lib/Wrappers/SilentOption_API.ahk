@@ -4,68 +4,6 @@
     static exeProcess := "SilentOption.exe"
 	static currentConfig := ""
 
-	class StopFocusSteal {
-		static _MyGui := Gui.New("+LastFound")	
-		static _ := SilentOption.StopFocusSteal.new()
-
-		static debugTips := false
-
-		__New() {
-			this.previous := -1
-			this.current := -1 
-
-			this.__shellHook()
-		}
-		
-		__shellHook() {
-			DllCall( "RegisterShellHookWindow", "UInt", SilentOption.StopFocusSteal._MyGui.Hwnd)
-			MsgNum := DllCall( "RegisterWindowMessage", "Str", "SHELLHOOK", "UInt")
-
-			OnMessage(MsgNum, ObjBindMethod(this, "ShellMessage"))
-		}
-		
-		StopStealing(id) {	
-			if (this.current > 0 && this.current != id) {
-				WinActivate("ahk_id " . this.current)
-				return true
-			} else if (this.previous > 0 && this.previous != id) {
-				WinActivate("ahk_id " . this.previous)
-				return true
-			}
-			return false
-		}
-
-		ShellMessage(wParam, lParam, msg, hwnd) {
-			if (wParam = 1) {
-				this.lastNewWindow := A_TickCount
-				if (this.StopStealing(lParam)) {
-					DllCall("FlashWindow", "UInt", lParam, "Int", 1)
-					if (SilentOption.StopFocusSteal.debugTips) {
-						Title := Utility.WinGetTitle("ahk_id " . lParam)
-						this.ShowTip("Thief: " . Title . " (" . A_TimeIdlePhysical . ")", "Stopped Focus Steal")
-					}
-				}
-			} 
-			
-			if (lParam > 0 && wParam = 32772) { 
-				this.LogCurrent(lParam)
-			}
-		}
-		
-		LogCurrent(id) {
-			if (id != this.current) {
-				this.previous := this.current
-				this.current := id
-				return true
-			}
-			return false
-		}
-		
-		ShowTip(title, text := "") {
-			TrayTip(text, title, 16)
-		}
-	}
-
     class CPU extends SilentOption {		
         static simpleMode(value) {
             this.setFanConfig("FanCPUCurrentMode", "simple")
