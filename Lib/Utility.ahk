@@ -182,6 +182,11 @@ class Utility {
 	
 		return silent ? SilentOutput(cmd) : ShellOutput(cmd)
 	}
+
+	static GetProcessExePath(p_id) {
+		for process in ComObjGet("winmgmts:").ExecQuery("Select * from Win32_Process where ProcessId=" p_id)
+			return process.ExecutablePath
+	}
 	
 	static RunCommand(filePath, silent := true) {
 		try {
@@ -206,7 +211,7 @@ class Utility {
 		}
 	}
 
-	static LaunchProcess(fileEXE) {
+	static LaunchProcess(fileEXE, silent := true) {
 		static configPath := A_WorkingDir . "\Lib\Cache\" . "QuickAccessCache.ini"
 		processAlreadyLoaded := false
 
@@ -231,10 +236,10 @@ class Utility {
 			if (FileExist(filePath)) { ; The path from configuration file could not exist at some point...
 				IniWrite(filePath, configPath, "FilePaths", fileEXE) ; Should we always force update the config file? hmm..
 				if !(processAlreadyLoaded)
-					return this.RunCommand(filePath)
+					return this.RunCommand(filePath, silent)
 			} else {
 				IniDelete(configPath, "FilePaths", fileEXE)
-				this.LaunchProcess(fileExe) ; Retry
+				this.LaunchProcess(fileExe, silent) ; Retry
 			}
 		}
 	}
@@ -312,5 +317,21 @@ class Utility {
 		if (!windowExist)
 			DetectHiddenWindows False
 		return windowExist
+	}
+
+	static WinGetTitle(wnd) {
+		try {
+			DetectHiddenWindows False
+			windowTitle := WinGetTitle(wnd)
+			if (windowTitle)
+				return windowTitle
+			
+			DetectHiddenWindows True
+			windowTitle := WinGetTitle(wnd)
+			
+			if (!windowTitle)
+				DetectHiddenWindows False
+			return windowTitle
+		}
 	}
 }

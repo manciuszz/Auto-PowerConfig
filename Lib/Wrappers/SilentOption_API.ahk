@@ -1,94 +1,160 @@
-﻿; Note: Apparently 'ControlClick' works only when user mouse is inside this application window due to the app having internal MouseInside checks...
-class SilentOption { ; NOTE: Should be ran as an administrator to function properly.	
-	static _ := SilentOption.base := SilentOption.new()
-	static exeProcess := "ahk_exe SilentOption.exe"
-	static _offset := ""
-  
-	class CPU extends SilentOption {		
-		static simpleMode() {
-			if (WinExist(this.exeProcess)) {
-				this.maximize() ; ... so we maximize the window, so that we wouldn't need to physically move our mouse...
-				this.click(270, 280) ; Press 'Simple Mode' button
-				return this
-			}
-			return this._error("Failed to activate simple mode!")
+﻿class SilentOption { ; Requires Administrator priviliges...
+    static _ := SilentOption.base := SilentOption.new()
+    static _fanSpeedConfig := A_AppData . "\MSI\fanspeed.txt"
+    static exeProcess := "SilentOption.exe"
+	static currentConfig := ""
+
+	class StopFocusSteal {
+		static _MyGui := Gui.New("+LastFound")	
+		static _ := SilentOption.StopFocusSteal.new()
+
+		static debugTips := false
+
+		__New() {
+			this.previous := -1
+			this.current := -1 
+
+			this.__shellHook()
 		}
 		
-		static advancedMode() {
-			if (WinExist(this.exeProcess)) {
-				this.maximize()
-				this.click(660, 655) ; Press 'Advanced Mode' button
-				return this
-			}
-			return this._error("Failed to activate advanced mode!")
-		}
-	}
-	
-	class GPU extends SilentOption {
-		static simpleMode() {
-			if (WinExist(this.exeProcess)) {
-				; TODO ...
-				return this
-			}
-			return this._error("Failed to activate simple mode!")
+		__shellHook() {
+			DllCall( "RegisterShellHookWindow", "UInt", SilentOption.StopFocusSteal._MyGui.Hwnd)
+			MsgNum := DllCall( "RegisterWindowMessage", "Str", "SHELLHOOK", "UInt")
+
+			OnMessage(MsgNum, ObjBindMethod(this, "ShellMessage"))
 		}
 		
-		static advancedMode() {
-			if (WinExist(this.exeProcess)) {
-				; TODO ...
-				return this
+		StopStealing(id) {	
+			if (this.current > 0 && this.current != id) {
+				WinActivate("ahk_id " . this.current)
+				return true
+			} else if (this.previous > 0 && this.previous != id) {
+				WinActivate("ahk_id " . this.previous)
+				return true
 			}
-			return this._error("Failed to activate advanced mode!")
+			return false
+		}
+
+		ShellMessage(wParam, lParam, msg, hwnd) {
+			if (wParam = 1) {
+				this.lastNewWindow := A_TickCount
+				if (this.StopStealing(lParam)) {
+					DllCall("FlashWindow", "UInt", lParam, "Int", 1)
+					if (SilentOption.StopFocusSteal.debugTips) {
+						Title := Utility.WinGetTitle("ahk_id " . lParam)
+						this.ShowTip("Thief: " . Title . " (" . A_TimeIdlePhysical . ")", "Stopped Focus Steal")
+					}
+				}
+			} 
+			
+			if (lParam > 0 && wParam = 32772) { 
+				this.LogCurrent(lParam)
+			}
+		}
+		
+		LogCurrent(id) {
+			if (id != this.current) {
+				this.previous := this.current
+				this.current := id
+				return true
+			}
+			return false
+		}
+		
+		ShowTip(title, text := "") {
+			TrayTip(text, title, 16)
 		}
 	}
-	
+
+    class CPU extends SilentOption {		
+        static simpleMode(value) {
+            this.setFanConfig("FanCPUCurrentMode", "simple")
+			if (value != "")
+            	this.setFanConfig("FanCPUSimpleModeValue", value)
+			this.applySettings()
+        }
+
+        static advancedMode(temps*) {
+            this.setFanConfig("FanCPUCurrentMode", "advanced")
+			if (temps != "") {
+				if (!IsInteger(temps[1]))
+					temps := temps[1]
+				
+				for index, temperature in temps
+            		this.setFanConfig("FanCPUT" . index . "Percentage", temperature)	
+			}
+			this.applySettings()
+        }
+    }
+
+    class GPU extends SilentOption {
+        static simpleMode(value) {
+            this.setFanConfig("FanVGACurrentMode", "simple")
+			if (value != "")
+            	this.setFanConfig("FanVGASimpleModeValue", value)
+
+			this.applySettings()
+        }
+
+        static advancedMode(temps*) {
+            this.setFanConfig("FanVGACurrentMode", "advanced")
+			if (temps != "") {
+				if (!IsInteger(temps[1]))
+					temps := temps[1]
+				
+				for index, temperature in temps
+            		this.setFanConfig("FanVGAT" . index . "Percentage", temperature)	
+			}
+			this.applySettings()
+        }
+    }
+
+    writeSettingsToFile() {
+		FileDelete(this._fanSpeedConfig)
+        FileAppend(this._fanConfigToRaw(this.currentConfig), this._fanSpeedConfig)
+    }
+
 	applySettings() {
-		if (WinExist(this.exeProcess)) {
-			this.maximize()
-			this.click(1050, 480) ; Press 'Apply'
-			Sleep(1)
-			this.click(570, 355) ; Press 'OK'
-			return ErrorLevel
+		this.writeSettingsToFile()
+
+		PID := ProcessExist(this.exeProcess)
+
+		if (PID)
+			Utility.ExitProcess(PID)
+			
+        Utility.LaunchProcess(this.exeProcess)
+	}
+
+    _fanConfigToRaw(currentConfig) {
+        rawConfig := ""
+
+        for key, value in currentConfig {
+            rawConfig .= Format("{1:s}:{2:s}`n", key, value)
+        }
+
+        return rawConfig
+    }
+
+    getFanConfig() {
+        configObject := Map()
+
+        RAWFanSpeedConfig := FileRead(this._fanSpeedConfig)
+        Loop Parse, RAWFanSpeedConfig, "`n", "`r" {
+            if (A_LoopField == "")
+                continue
+
+            ConfigSetting := StrSplit(A_LoopField, ":")
+            configObject[ConfigSetting[1]] := ConfigSetting[2]
+        }
+
+        return configObject
+    }
+
+    setFanConfig(key, value) {
+		if (!this.currentConfig) {
+			this.currentConfig := this.getFanConfig()
 		}
-		return this._error("Failed to apply settings!")
-	}
-	
-	_error(msg) {
-		MsgBox("[SilentOption API] > " . msg)
-		return {}
-	}
-	
-	getWindowInfo() {
-		WinGetPos(win_x, win_y, win_width, win_height, this.exeProcess)
-		return { x: win_x, y: win_y, width: win_width, height: win_height }
-	}
-	
-	_initOffset() {
-		if (this._offset)
-			return
-		this._offset := this.getWindowInfo()
-	}
-	
-	maximize() {
-		this._initOffset()
-		WinMaximize(this.exeProcess)
-	}
-	
-	focus() {
-		this._initOffset()
-		; ControlFocus,, % this.exeProcess
-		WinActivate(this.exeProcess)
-	}
-	
-	click(x, y, speed := 0) {
-		windowData := this.getWindowInfo()
-		x := x // (this._offset.width / windowData.width)
-		y := y // (this._offset.height / windowData.height)
-		
-		MouseGetPos(lastX, lastY)
-		this.focus()
-		MouseMove(x, y, speed)
-		ControlClick("x" . x . " y" . y, this.exeProcess,,,, "NA")
-		MouseMove(lastX, lastY, speed)
-	}
+
+        this.currentConfig[key] := value
+    }
 }

@@ -1,0 +1,11 @@
+
+Existing Power Schemes (* Active)
+-----------------------------------
+Power Scheme GUID: 2d68a000-50f6-404d-8c14-d9d96e2b7aa6  (Consistent Performance)
+Power Scheme GUID: 302c1876-709e-4953-bf36-852c6f292ce0  (Super PowerSaver)
+Power Scheme GUID: 34548d37-033f-4f28-bf1f-e73be6c69bcb  (Power Saver)
+Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)
+Power Scheme GUID: 517b87a5-680a-4051-aae3-56be073450a1  (Downclocked Balanced)
+Power Scheme GUID: a9faca1a-791f-4a3e-b88e-bc06275be899  (Ultimate Performance)
+Power Scheme GUID: e9362f5d-cba0-467c-9203-0af2c9374e36  (Internet)
+Power Scheme GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c  (High performance) *

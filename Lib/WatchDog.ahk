@@ -16,9 +16,10 @@
 	
 	Notify(msg) {
 		wndTitle := StrUpper(StrReplace(this.wndTitle, "ahk_exe "))
-		TrayTip(this.tooltipPrefix . " " . wndTitle, msg)
-		Sleep(this.notificationDelay)
-		TrayTip()
+		TrayTip(this.tooltipPrefix . " " . wndTitle, msg, "Mute")
+		SetTimer(Func("TrayTip"), -this.notificationDelay)
+		; Sleep(this.notificationDelay)
+		; TrayTip()
 		return this
 	}
 	
