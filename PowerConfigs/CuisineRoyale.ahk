@@ -19,6 +19,7 @@ class CuisineRoyale {
 		Utility.AHKScript(CuisineRoyale.finerCurves).Open()
 				
 		SilentOption.CPU.advancedMode(0, 54, 75, 100, 125, 150)
+		SilentOption.GPU.advancedMode(55, 65, 85, 100, 125, 150)
 
 		; this.Notify("Enabled " . PowerConfig.SetPowerPlan("Consistent Performance") . " power plan.")
 	}
@@ -31,12 +32,20 @@ class CuisineRoyale {
 		; this.Notify("Brave Browser processes resumed.")
 		
 		this.Notify("Closing opened applications.")
-		Utility.ExitProcess("MSIAfterburner.exe")
-		Utility.ExitProcess("RTSS.exe")
 		Utility.AHKScript(CuisineRoyale.cuisineAssistant).Close()
 		Utility.AHKScript(CuisineRoyale.finerCurves).Close()
 
-		SilentOption.CPU.simpleMode(-20)
+		; Once we close MSI Afterburner, NVIDIA Optimus shutsdown dGPU, meaning the fans shutdown with it... Let's allow an X amount of time for extra cooling.
+		
+		ContinueAfterSleepWith() {
+			Utility.ExitProcess("MSIAfterburner.exe")
+			Utility.ExitProcess("RTSS.exe")
+
+			SilentOption.CPU.simpleMode(-20)
+			SilentOption.GPU.advancedMode(30, 60, 80, 100, 125, 150)
+		}
+
+		Utility.AsyncSleep(15 * 1000, () => ContinueAfterSleepWith()) ; So we don't interrupt the main thread with sleep...
 
 		; this.Notify("Restored to previously set " . PowerConfig.SetPowerPlan(PowerConfig.GetPreviousActivePlan().Name) . " power plan.")
 	}

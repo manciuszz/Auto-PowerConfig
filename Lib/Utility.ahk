@@ -362,6 +362,21 @@ class Utility {
 		
 		return result
 	}
+
+	/*
+		> Usage Example:
+
+		ContinueWith() {
+			MsgBox("Hello World From " . IsFunc(A_ThisFunc))
+		}
+
+		Utility.AsyncSleep(3 * 1000, () => ContinueWith())
+
+	*/
+
+	static AsyncSleep(timeMS, continueAction) {
+		SetTimer(continueAction, -1 * timeMS)
+	}
 	
 	static Join(sep, params) {
 		for (param in params)

@@ -2,7 +2,9 @@
     static _ := SilentOption.base := SilentOption.new()
     static _fanSpeedConfig := A_AppData . "\MSI\fanspeed.txt"
     static exeProcess := "SilentOption.exe"
+
 	static currentConfig := ""
+	static queuedApplyCommand := ""
 
     class CPU extends SilentOption {		
         static simpleMode(value) {
@@ -49,10 +51,18 @@
 
     writeSettingsToFile() {
 		FileDelete(this._fanSpeedConfig)
-        FileAppend(this._fanConfigToRaw(this.currentConfig), this._fanSpeedConfig)
+        FileAppend(this._fanConfigToRaw(SilentOption.currentConfig), this._fanSpeedConfig)
     }
 
-	applySettings() {
+    applySettings() { ; Debounced 'applySettings' method
+        if (!SilentOption.queuedApplyCommand) {
+            SilentOption.queuedApplyCommand := ObjBindMethod(this, "__applySettings")
+        }
+        
+        SetTimer(SilentOption.queuedApplyCommand, -250)
+    }
+
+	__applySettings() {
 		this.writeSettingsToFile()
 
 		PID := ProcessExist(this.exeProcess)
@@ -89,10 +99,10 @@
     }
 
     setFanConfig(key, value) {
-		if (!this.currentConfig) {
-			this.currentConfig := this.getFanConfig()
+		if (!SilentOption.currentConfig) {
+			SilentOption.currentConfig := this.getFanConfig()
 		}
 
-        this.currentConfig[key] := value
+        SilentOption.currentConfig[key] := value
     }
 }

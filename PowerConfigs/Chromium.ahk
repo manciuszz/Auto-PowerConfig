@@ -8,4 +8,4 @@ class Chrome {
 	}
 }
 
-WatchDog.new(Chrome).Monitor("chrome.exe", "Active")
+WatchDog.new(Chrome).Monitor("chrome.exe", "Active", true)
