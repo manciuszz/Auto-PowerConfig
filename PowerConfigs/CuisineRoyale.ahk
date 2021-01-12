@@ -45,7 +45,7 @@ class CuisineRoyale {
 			SilentOption.GPU.advancedMode(30, 60, 80, 100, 125, 150)
 		}
 
-		Utility.AsyncSleep(15 * 1000, () => ContinueAfterSleepWith()) ; So we don't interrupt the main thread with sleep...
+		Utility.DelayAction(1 * 60 * 1000, () => ContinueAfterSleepWith()) ; So we don't interrupt the main thread with sleep...
 
 		; this.Notify("Restored to previously set " . PowerConfig.SetPowerPlan(PowerConfig.GetPreviousActivePlan().Name) . " power plan.")
 	}

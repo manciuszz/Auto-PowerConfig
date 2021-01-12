@@ -58,6 +58,12 @@
 		this.updateProfile()
 		return this
 	}
+
+	toggleScanInfo() {
+		this.writeValueToProfile("OSD", "SyncInfo", !this.readValueFromProfile("OSD", "SyncInfo", profileEXE), profileEXE)
+		this.updateProfile()
+		return this
+	}
 	
 	toggleDisplay(forceState := "") {
 		static isHidden := false

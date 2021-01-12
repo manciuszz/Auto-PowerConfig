@@ -370,11 +370,11 @@ class Utility {
 			MsgBox("Hello World From " . IsFunc(A_ThisFunc))
 		}
 
-		Utility.AsyncSleep(3 * 1000, () => ContinueWith())
+		Utility.DelayAction(3 * 1000, () => ContinueWith())
 
 	*/
 
-	static AsyncSleep(timeMS, continueAction) {
+	static DelayAction(timeMS, continueAction) {
 		SetTimer(continueAction, -1 * timeMS)
 	}
 	
