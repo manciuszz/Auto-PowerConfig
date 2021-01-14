@@ -104,22 +104,45 @@ class Suspender {
 			this.Process_Resume(processID)
 	}
 
+	static SuspendProcess(processName) {
+		this.SuspendProcesses(this.EnumProcessesByName(processName))
+	}
+
+	static ResumeProcess(processName) {
+		this.ResumeProcesses(this.EnumProcessesByName(processName))
+	}
+
 	static Process_Suspend(PID_or_Name) {
 		PID := (InStr(PID_or_Name, ".")) ? this.ProcExist(PID_or_Name) : PID_or_Name
-		h := DllCall("OpenProcess", "uInt", 0x1F0FFF, "Int", 0, "Int", PID)
-		if !h   
-			Return -1
+		h := DllCall("OpenProcess", "UInt", 0x1F0FFF, "Int", 0, "Int", PID)
+		if (!h)   
+			return -1
 		DllCall("ntdll.dll\NtSuspendProcess", "Int", h)
 		DllCall("CloseHandle", "Int", h)
 	}
 
 	static Process_Resume(PID_or_Name) {
 		PID := (InStr(PID_or_Name, ".")) ? this.ProcExist(PID_or_Name) : PID_or_Name
-		h := DllCall("OpenProcess", "uInt", 0x1F0FFF, "Int", 0, "Int", PID)
-		if !h   
-			Return -1
+		h := DllCall("OpenProcess", "UInt", 0x1F0FFF, "Int", 0, "Int", PID)
+		if (!h)  
+			return -1
 		DllCall("ntdll.dll\NtResumeProcess", "Int", h)
 		DllCall("CloseHandle", "Int", h)
+	}
+
+	static EnumProcessesByName(searchName, regEx := false) { ; This is faster than 'GetProcessIDs' method via PowerShell
+		if !DllCall("Wtsapi32\WTSEnumerateProcesses", "Ptr", 0, "UInt", 0, "UInt", 1, "PtrP", (pProcessInfo := 0), "PtrP", (count := 0))
+			throw Exception("WTSEnumerateProcesses failed. A_LastError: " . A_LastError)
+		
+		addr := pProcessInfo, PIDs := []
+		Loop(count) {
+			procName := StrGet( NumGet(addr, 8, "UInt") )
+			if ((regEx && RegExMatch(procName, searchName)) || (procName == searchName))
+				PID := NumGet(addr, 4, "UInt"), PIDs.Push(PID)
+			addr += A_PtrSize = 4 ? 16 : 24
+		}
+		DllCall("Wtsapi32\WTSFreeMemory", "Ptr", pProcessInfo)
+		Return PIDs
 	}
 
 	static GetProcessIDs(processName) {
@@ -156,7 +179,7 @@ class TaskManager {
 		RunWait("PowerShell Get-Process -Id (get-wmiobject Win32_service | where Name -eq '" . serviceName . "' | `% { $_.ProcessId }) | `% { $_.ProcessorAffinity=" . affinity . " }",, "Hide")
 	}
 
-	static SetProcessorAffinity(affinity := 255, excludedProcesses*) {
+	static SetSystemAffinity(affinity := 255, excludedProcesses*) {
 		RawArray(params*) {
 			; if (!params.Length)
 				; str := "'""""''"
@@ -167,6 +190,29 @@ class TaskManager {
 	
 		processList := RawArray(excludedProcesses*)
 		RunWait("PowerShell Get-Process | `% { $p = $_; $m = $FALSE; (" . processList . ") | `% { if ($p.ProcessName -match $_) { $m = $TRUE } }; if ( $m -ne $TRUE ) { $_.ProcessorAffinity=" . affinity . " } }",, "Hide")
+	}
+
+	static SetProcessAffinity(processName, affinity := 255) {	
+		RunWait("PowerShell Get-Process " . StrReplace(processName, ".exe") . " | `% { $_.ProcessorAffinity = " . affinity . " }",, "Hide")
+	}
+
+	static SetProcessAffinityCores(processName, coresArray*) {
+
+		if (coresArray.Length == 1 && !IsInteger(coresArray[1]))
+			coresArray := coresArray[1]
+
+		if (coresArray.Length == 0) { ; Default Core Count = All Cores. ; TODO: Test on more than 4 cores system
+			this.SetProcessAffinity(processName, 255)
+		}
+
+		CoreArrayToAffinityValue(coresList) {
+			calculatedAffinityValue := 0 
+			for coreId in coresList
+				calculatedAffinityValue += (2 ** coreId)
+			return calculatedAffinityValue
+		}
+
+		this.SetProcessAffinity(processName, CoreArrayToAffinityValue(coresArray))
 	}
 	
 	static SetProcessCPUPriority(Process, Priority := "Normal") {
